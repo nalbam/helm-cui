@@ -1,0 +1,11 @@
+# chart-repo: stable/prometheus-operator
+# chart-version: latest
+# chart-ingress: true
+
+nameOverride: prometheus-operator
+
+kubeStateMetrics:
+  enabled: false
+
+grafana:
+  enabled: false

@@ -1,0 +1,10 @@
+# chart-repo: incubator/aws-alb-ingress-controller
+# chart-version: latest
+
+nameOverride: aws-alb-ingress-controller
+
+clusterName: CLUSTER_NAME
+
+autoDiscoverAwsRegion: true
+
+autoDiscoverAwsVpcID: true

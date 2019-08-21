@@ -1,0 +1,5 @@
+# chart-repo: stable/heapster
+# chart-version: latest
+# chart-pdb: N 1
+
+nameOverride: heapster

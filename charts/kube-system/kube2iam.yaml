@@ -1,0 +1,12 @@
+# chart-repo: stable/kube2iam
+# chart-version: latest
+
+nameOverride: kube2iam
+
+extraArgs:
+  base-role-arn: BASE_ROLE_ARN
+  default-role: kube2iam-default
+
+# host:
+#   iptables: true
+#   interface: cbr0

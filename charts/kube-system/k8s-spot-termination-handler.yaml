@@ -1,0 +1,8 @@
+# chart-repo: stable/k8s-spot-termination-handler
+# chart-version: latest
+
+nameOverride: k8s-spot-termination-handler
+
+clusterName: CLUSTER_NAME
+
+slackUrl: SLACK_URL
