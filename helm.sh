@@ -415,6 +415,23 @@ helm_install() {
     _replace "s/CLUSTER_NAME/${CLUSTER_NAME}/g" ${CHART}
     _replace "s/NAMESPACE/${NAMESPACE}/g" ${CHART}
 
+    # for ingress
+    if [ "${INGRESS}" == "true" ]; then
+        replace_chart ${CHART} "INGRESS_DOMAIN"
+
+        INGRESS_DOMAIN="${ANSWER}"
+
+        if [ "${ANSWER}" != "" ]; then
+            _replace "s/SERVICE_TYPE/ClusterIP/g" ${CHART}
+            _replace "s/INGRESS_ENABLED/true/g" ${CHART}
+        else
+            _replace "s/SERVICE_TYPE/LoadBalancer/g" ${CHART}
+            _replace "s/INGRESS_ENABLED/false/g" ${CHART}
+        fi
+
+        _replace "s/#:ING://g" ${CHART}
+    fi
+
     # for cert-manager
     if [ "${NAME}" == "cert-manager" ]; then
         # Install the CustomResourceDefinition resources separately
@@ -424,38 +441,6 @@ helm_install() {
 
         # Label the cert-manager namespace to disable resource validation
         kubectl label namespace ${NAMESPACE} certmanager.k8s.io/disable-validation=true
-
-    fi
-
-    # for nginx-ingress
-    # if [[ "${NAME}" == "nginx-ingress"* ]]; then
-    if [ "${NAME}" == "nginx-ingress" ]; then
-        get_base_domain
-
-        get_replicas ${NAMESPACE} ${NAME}-controller
-        if [ "${REPLICAS}" != "" ]; then
-            EXTRA_VALUES="${EXTRA_VALUES} --set controller.replicaCount=${REPLICAS}"
-        fi
-
-        get_cluster_ip ${NAMESPACE} ${NAME}-controller
-        if [ "${CLUSTER_IP}" != "" ]; then
-            EXTRA_VALUES="${EXTRA_VALUES} --set controller.service.clusterIP=${CLUSTER_IP}"
-
-            get_cluster_ip ${NAMESPACE} ${NAME}-controller-metrics
-            if [ "${CLUSTER_IP}" != "" ]; then
-                EXTRA_VALUES="${EXTRA_VALUES} --set controller.metrics.service.clusterIP=${CLUSTER_IP}"
-            fi
-
-            get_cluster_ip ${NAMESPACE} ${NAME}-controller-stats
-            if [ "${CLUSTER_IP}" != "" ]; then
-                EXTRA_VALUES="${EXTRA_VALUES} --set controller.stats.service.clusterIP=${CLUSTER_IP}"
-            fi
-
-            get_cluster_ip ${NAMESPACE} ${NAME}-default-backend
-            if [ "${CLUSTER_IP}" != "" ]; then
-                EXTRA_VALUES="${EXTRA_VALUES} --set defaultBackend.service.clusterIP=${CLUSTER_IP}"
-            fi
-        fi
     fi
 
     # for external-dns
@@ -470,6 +455,7 @@ helm_install() {
     # for cluster-autoscaler
     if [ "${NAME}" == "cluster-autoscaler" ]; then
         get_cluster_ip ${NAMESPACE} ${NAME}
+
         if [ "${CLUSTER_IP}" != "" ]; then
             EXTRA_VALUES="${EXTRA_VALUES} --set service.clusterIP=${CLUSTER_IP}"
         fi
@@ -482,7 +468,7 @@ helm_install() {
 
     # for k8s-spot-termination-handler
     if [ "${NAME}" == "k8s-spot-termination-handler" ]; then
-        replace_chart ${CHART} "SLACK_URL"
+        replace_chart ${CHART} "SLACK_TOKEN"
     fi
 
     # for vault
@@ -500,23 +486,26 @@ helm_install() {
 
     # for argo
     if [ "${NAME}" == "argo" ]; then
-        replace_chart ${CHART} "ARTIFACT_REPOSITORY" "${CLUSTER_NAME}-artifact"
+        replace_chart ${CHART} "ARTIFACT_REPOSITORY" "${CLUSTER_NAME}-argo"
     fi
+
     # for argocd
     if [ "${NAME}" == "argocd" ]; then
-        replace_chart ${CHART} "GITHUB_ORG"
+        if [ "${INGRESS_DOMAIN}" != "" ]; then
+            replace_chart ${CHART} "GITHUB_ORG"
 
-        if [ "${ANSWER}" != "" ]; then
-            _replace "s/#:GITHUB://g" ${CHART}
+            if [ "${ANSWER}" != "" ]; then
+                _replace "s/#:GITHUB://g" ${CHART}
 
-            _result "New Application: https://github.com/organizations/${ANSWER}/settings/applications"
+                _result "New Application: https://github.com/organizations/${ANSWER}/settings/applications"
 
-            _result "Homepage: https://${NAME}-${NAMESPACE}.${BASE_DOMAIN}"
-            _result "Callback: https://${NAME}-${NAMESPACE}.${BASE_DOMAIN}/api/dex/callback"
+                _result "Homepage: https://${NAME}-${NAMESPACE}.${BASE_DOMAIN}"
+                _result "Callback: https://${NAME}-${NAMESPACE}.${BASE_DOMAIN}/api/dex/callback"
 
-            replace_password ${CHART} "GITHUB_CLIENT_ID" "****"
+                replace_password ${CHART} "GITHUB_CLIENT_ID" "****"
 
-            replace_password ${CHART} "GITHUB_CLIENT_SECRET" "****"
+                replace_password ${CHART} "GITHUB_CLIENT_SECRET" "****"
+            fi
         fi
     fi
 
@@ -653,24 +642,6 @@ helm_install() {
     fi
     _replace "s/ISTIO_ENABLED/${ISTIO_ENABLED}/g" ${CHART}
 
-    # for ingress
-    if [ "${INGRESS}" == "true" ]; then
-        if [ -z ${BASE_DOMAIN} ]; then
-            DOMAIN=
-
-            _replace "s/SERVICE_TYPE/LoadBalancer/g" ${CHART}
-            _replace "s/INGRESS_ENABLED/false/g" ${CHART}
-        else
-            DOMAIN="${NAME}-${NAMESPACE}.${BASE_DOMAIN}"
-
-            _replace "s/SERVICE_TYPE/ClusterIP/g" ${CHART}
-            _replace "s/INGRESS_ENABLED/true/g" ${CHART}
-            _replace "s/INGRESS_DOMAIN/${DOMAIN}/g" ${CHART}
-            _replace "s/BASE_DOMAIN/${BASE_DOMAIN}/g" ${CHART}
-        fi
-        _replace "s/#:ING://g" ${CHART}
-    fi
-
     # check exist persistent volume
     COUNT=$(cat ${CHART} | grep '# chart-pvc:' | wc -l | xargs)
     if [ "x${COUNT}" != "x0" ]; then
@@ -726,20 +697,6 @@ helm_install() {
         create_cluster_role_binding admin ${NAMESPACE} jenkins
     fi
 
-    # for nginx-ingress
-    # if [[ "${NAME}" == "nginx-ingress"* ]]; then
-    if [ "${NAME}" == "nginx-ingress" ]; then
-        set_base_domain "${NAME}"
-    fi
-
-    # # for nginx-ingress-private
-    # if [ "${NAME}" == "nginx-ingress-private" ]; then
-    #     question "ingress rule delete all? (YES/[no]) : "
-    #     if [ "${ANSWER}" == "YES" ]; then
-    #         remove_ing_rule
-    #     fi
-    # fi
-
     # for efs-provisioner
     if [ "${NAME}" == "efs-provisioner" ]; then
         _command "kubectl get sc -n ${NAMESPACE}"
@@ -753,16 +710,8 @@ helm_install() {
 
     # chart ingress = true
     if [ "${INGRESS}" == "true" ]; then
-        if [ -z ${BASE_DOMAIN} ]; then
-            get_elb_domain ${NAME} ${NAMESPACE}
-
-            _result "${NAME}: http://${ELB_DOMAIN}"
-        else
-            if [ -z ${ROOT_DOMAIN} ]; then
-                _result "${NAME}: http://${DOMAIN}"
-            else
-                _result "${NAME}: https://${DOMAIN}"
-            fi
+        if [ "${INGRESS_DOMAIN}" != "" ]; then
+            _result "${NAME}: http://${INGRESS_DOMAIN}"
         fi
     fi
 }

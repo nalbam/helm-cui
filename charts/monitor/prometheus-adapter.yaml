@@ -8,13 +8,18 @@ prometheus:
   port: 80
 
 rules:
+  default: false
   custom:
-    - seriesQuery: 'http_requests_total{kubernetes_namespace!="",kubernetes_pod_name!=""}'
+    - metricsQuery: sum(rate(<<.Series>>{<<.LabelMatchers>>}[2m])) by (<<.GroupBy>>)
+      name:
+        as: ${1}_per_second
+        matches: ^(.*)_total
       resources:
         overrides:
-          kubernetes_namespace: {resource: "namespace"}
-          kubernetes_pod_name: {resource: "pod"}
-      name:
-        matches: "^(.*)_total"
-        as: "${1}_per_second"
-      metricsQuery: 'sum(rate(<<.Series>>{<<.LabelMatchers>>}[2m])) by (<<.GroupBy>>)'
+          namespace:
+            resource: namespace
+          pod:
+            resource: pod
+          service:
+            resource: service
+      seriesQuery: http_requests_total{namespace!="",pod!=""}

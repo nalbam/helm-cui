@@ -153,27 +153,27 @@ waiting() {
     echo
 }
 
-get_az_list() {
-    if [ -z ${AZ_LIST} ]; then
-        AZ_LIST="$(aws ec2 describe-availability-zones | jq -r '.AvailabilityZones[].ZoneName' | head -3 | tr -s '\r\n' ',' | sed 's/.$//')"
-    fi
-}
+# get_az_list() {
+#     if [ -z ${AZ_LIST} ]; then
+#         AZ_LIST="$(aws ec2 describe-availability-zones | jq -r '.AvailabilityZones[].ZoneName' | head -3 | tr -s '\r\n' ',' | sed 's/.$//')"
+#     fi
+# }
 
-get_master_zones() {
-    if [ "${master_count}" == "1" ]; then
-        master_zones=$(echo "${AZ_LIST}" | cut -d',' -f1)
-    else
-        master_zones="${AZ_LIST}"
-    fi
-}
+# get_master_zones() {
+#     if [ "${master_count}" == "1" ]; then
+#         master_zones=$(echo "${AZ_LIST}" | cut -d',' -f1)
+#     else
+#         master_zones="${AZ_LIST}"
+#     fi
+# }
 
-get_node_zones() {
-    if [ "${node_count}" == "1" ]; then
-        zones=$(echo "${AZ_LIST}" | cut -d',' -f1)
-    else
-        zones="${AZ_LIST}"
-    fi
-}
+# get_node_zones() {
+#     if [ "${node_count}" == "1" ]; then
+#         zones=$(echo "${AZ_LIST}" | cut -d',' -f1)
+#     else
+#         zones="${AZ_LIST}"
+#     fi
+# }
 
 get_template() {
     __FROM=${SHELL_DIR}/${1}
@@ -192,11 +192,11 @@ get_template() {
     fi
 }
 
-update_tools() {
-    ${SHELL_DIR}/tools.sh
+# update_tools() {
+#     ${SHELL_DIR}/tools.sh
 
-    _success "Please restart!"
-}
+#     _success "Please restart!"
+# }
 
 update_self() {
     pushd ${SHELL_DIR}
@@ -212,7 +212,7 @@ logo() {
         tput setaf 3
     fi
 
-    cat ${SHELL_DIR}/templates/${THIS_NAME}-logo.txt
+    cat ${SHELL_DIR}/templates/logo-${THIS_NAME}.txt
     echo
 
     if [ "${TPUT}" != "" ]; then

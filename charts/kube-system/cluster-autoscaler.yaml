@@ -4,9 +4,6 @@
 
 nameOverride: cluster-autoscaler
 
-# podAnnotations:
-#   cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
-
 autoDiscovery:
   enabled: true
   clusterName: CLUSTER_NAME
@@ -25,6 +22,7 @@ extraArgs:
 
 # podAnnotations:
 #   iam.amazonaws.com/role: AWS_ROLE_ARN
+#   cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
 
 #:MASTER:nodeSelector:
 #:MASTER:  kubernetes.io/role: master
@@ -38,3 +36,12 @@ sslCertPath: /etc/ssl/certs/ca-bundle.crt
 rbac:
   create: true
   pspEnabled: true
+
+# serviceMonitor:
+#   enabled: false
+#   namespace: monitor
+#    ## Defaults to whats used if you follow CoreOS [Prometheus Install Instructions](https://github.com/helm/charts/tree/master/stable/prometheus-operator#tldr)
+#    ## [Prometheus Selector Label](https://github.com/helm/charts/tree/master/stable/prometheus-operator#prometheus-operator-1)
+#    ## [Kube Prometheus Selector Label](https://github.com/helm/charts/tree/master/stable/prometheus-operator#exporters)
+#   selector:
+#     prometheus: kube-prometheus

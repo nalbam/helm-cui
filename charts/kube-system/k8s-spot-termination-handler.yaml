@@ -5,4 +5,4 @@ nameOverride: k8s-spot-termination-handler
 
 clusterName: CLUSTER_NAME
 
-slackUrl: SLACK_URL
+slackUrl: https://hooks.slack.com/services/SLACK_TOKEN
