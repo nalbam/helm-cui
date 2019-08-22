@@ -16,6 +16,7 @@ ingress:
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
     nginx.ingress.kubernetes.io/proxy-body-size: 500m
     ingress.kubernetes.io/proxy-body-size: 500m
+    external-dns.alpha.kubernetes.io/hostname: "INGRESS_DOMAIN."
   hosts:
     - INGRESS_DOMAIN
 
