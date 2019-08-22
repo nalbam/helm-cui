@@ -1,8 +1,8 @@
 #!/bin/bash
 
 THIS_REPO="nalbam"
-THIS_NAME="kube-cui"
-THIS_VERSION="v0.0.0"
+THIS_NAME="helm-cui"
+THIS_VERSION="v0.1.0"
 
 DEBUG_MODE=true
 

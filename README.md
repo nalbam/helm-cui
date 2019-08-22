@@ -1,1 +1,1 @@
-# kube-cui
+# helm-cui

@@ -417,7 +417,13 @@ helm_install() {
 
     # for ingress
     if [ "${INGRESS}" == "true" ]; then
-        replace_chart ${CHART} "INGRESS_DOMAIN"
+        replace_chart ${CHART} "BASE_DOMAIN" "${BASE_DOMAIN}"
+
+        if [ "${ANSWER}" != "" ]; then
+            BASE_DOMAIN="${ANSWER}"
+        fi
+
+        replace_chart ${CHART} "INGRESS_DOMAIN" "${NAME}-${NAMESPACE}.${BASE_DOMAIN}"
 
         INGRESS_DOMAIN="${ANSWER}"
 
@@ -608,13 +614,6 @@ helm_install() {
         replace_chart ${CHART} "CONFIGMAP_NAME" "${NAME}"
     fi
 
-    # for efs-pvc-exporter
-    if [ "${NAME}" == "efs-pvc-exporter" ]; then
-        replace_chart ${CHART} "SCHEDULE" "* * * * *"
-
-        replace_chart ${CHART} "RESTART" "OnFailure" # "Always", "OnFailure", "Never"
-    fi
-
     # for efs-mount
     if [ "${EFS_ID}" != "" ]; then
         _replace "s/#:EFS://g" ${CHART}
@@ -686,6 +685,12 @@ helm_install() {
     _command "kubectl get deploy,pod,svc,ing,pvc,pv -n ${NAMESPACE}"
     kubectl get deploy,pod,svc,ing,pvc,pv -n ${NAMESPACE}
 
+    # for efs-provisioner
+    if [ "${NAME}" == "efs-provisioner" ]; then
+        _command "kubectl get sc -n ${NAMESPACE}"
+        kubectl get sc -n ${NAMESPACE}
+    fi
+
     # for argo
     if [ "${NAME}" == "argo" ]; then
         create_cluster_role_binding admin ${NAMESPACE} default
@@ -695,12 +700,6 @@ helm_install() {
     if [ "${NAME}" == "jenkins" ]; then
         create_cluster_role_binding admin ${NAMESPACE} default
         create_cluster_role_binding admin ${NAMESPACE} jenkins
-    fi
-
-    # for efs-provisioner
-    if [ "${NAME}" == "efs-provisioner" ]; then
-        _command "kubectl get sc -n ${NAMESPACE}"
-        kubectl get sc -n ${NAMESPACE}
     fi
 
     # for kubernetes-dashboard
@@ -745,18 +744,6 @@ helm_delete() {
 
     if [ "${NAME}" == "" ]; then
         return
-    fi
-
-    # for nginx-ingress
-    # if [[ "${NAME}" == "nginx-ingress"* ]]; then
-    if [ "${NAME}" == "nginx-ingress" ]; then
-        ROOT_DOMAIN=
-        BASE_DOMAIN=
-    fi
-
-    # for efs-provisioner
-    if [ "${NAME}" == "efs-provisioner" ]; then
-        efs_delete
     fi
 
     # helm delete
@@ -1228,17 +1215,6 @@ efs_create() {
     EFS_ID=${ANSWER:-${EFS_ID}}
 
     if [ "${EFS_ID}" == "" ]; then
-        echo
-        echo "Creating a elastic file system"
-
-        EFS_ID=$(aws efs create-file-system --creation-token ${CLUSTER_NAME} --region ${REGION} | jq -r '.FileSystemId')
-        aws efs create-tags \
-            --file-system-id ${EFS_ID} \
-            --tags Key=Name,Value=efs.${CLUSTER_NAME} \
-            --region ap-northeast-2
-    fi
-
-    if [ "${EFS_ID}" == "" ]; then
         _error "Not found the EFS."
     fi
 
@@ -1246,130 +1222,6 @@ efs_create() {
 
     # replace EFS_ID
     _replace "s/EFS_ID/${EFS_ID}/g" ${CHART}
-
-    # owned
-    OWNED=$(aws efs describe-file-systems --file-system-id ${EFS_ID} | jq -r '.FileSystems[].Tags[] | values[]' | grep "kubernetes.io/cluster/${CLUSTER_NAME}")
-    if [ "${OWNED}" != "" ]; then
-        return
-    fi
-
-    # get the security group id
-    WORKER_SG_ID=$(aws ec2 describe-security-groups --filters "Name=group-name,Values=nodes.${CLUSTER_NAME}" | jq -r '.SecurityGroups[0].GroupId')
-    if [ -z ${WORKER_SG_ID} ] || [ "${WORKER_SG_ID}" == "null" ]; then
-        _error "Not found the security group for the nodes."
-    fi
-
-    _result "WORKER_SG_ID=${WORKER_SG_ID}"
-
-    # get vpc id
-    VPC_ID=$(aws ec2 describe-security-groups --filters "Name=group-name,Values=nodes.${CLUSTER_NAME}" | jq -r '.SecurityGroups[0].VpcId')
-
-    if [ -z ${VPC_ID} ]; then
-        _error "Not found the VPC."
-    fi
-
-    _result "VPC_ID=${VPC_ID}"
-
-    # get subent ids
-    VPC_PRIVATE_SUBNETS_LENGTH=$(aws ec2 describe-subnets --filters "Name=tag:kubernetes.io/cluster/${CLUSTER_NAME},Values=shared" "Name=tag:SubnetType,Values=Private" | jq '.Subnets | length')
-    if [ ${VPC_PRIVATE_SUBNETS_LENGTH} -gt 0 ]; then
-        VPC_SUBNETS=$(aws ec2 describe-subnets --filters "Name=tag:kubernetes.io/cluster/${CLUSTER_NAME},Values=shared" "Name=tag:SubnetType,Values=Private" | jq -r '(.Subnets[].SubnetId)')
-    else
-        VPC_SUBNETS=$(aws ec2 describe-subnets --filters "Name=tag:kubernetes.io/cluster/${CLUSTER_NAME},Values=shared" | jq -r '(.Subnets[].SubnetId)')
-    fi
-
-    _result "VPC_SUBNETS=$(echo ${VPC_SUBNETS} | xargs)"
-
-    # create a security group for efs mount targets
-    EFS_SG_LENGTH=$(aws ec2 describe-security-groups --filters "Name=group-name,Values=efs-sg.${CLUSTER_NAME}" | jq '.SecurityGroups | length')
-    if [ ${EFS_SG_LENGTH} -eq 0 ]; then
-        echo
-        echo "Creating a security group for mount targets"
-
-        EFS_SG_ID=$(aws ec2 create-security-group \
-            --region ${REGION} \
-            --group-name efs-sg.${CLUSTER_NAME} \
-            --description "Security group for EFS mount targets" \
-            --vpc-id ${VPC_ID} | jq -r '.GroupId')
-
-        aws ec2 authorize-security-group-ingress \
-            --group-id ${EFS_SG_ID} \
-            --protocol tcp \
-            --port 2049 \
-            --source-group ${WORKER_SG_ID} \
-            --region ${REGION}
-    else
-        EFS_SG_ID=$(aws ec2 describe-security-groups --filters "Name=group-name,Values=efs-sg.${CLUSTER_NAME}" | jq -r '.SecurityGroups[].GroupId')
-    fi
-
-    # echo "Security group for mount targets:"
-    _result "EFS_SG_ID=${EFS_SG_ID}"
-
-    echo
-    echo "Waiting for the state of the EFS to be available."
-    waiting_for isEFSAvailable
-
-    # create mount targets
-    EFS_MOUNT_TARGET_LENGTH=$(aws efs describe-mount-targets --file-system-id ${EFS_ID} --region ${REGION} | jq -r '.MountTargets | length')
-    if [ ${EFS_MOUNT_TARGET_LENGTH} -eq 0 ]; then
-        echo "Creating mount targets"
-
-        for SubnetId in ${VPC_SUBNETS}; do
-            EFS_MOUNT_TARGET_ID=$(aws efs create-mount-target \
-                --file-system-id ${EFS_ID} \
-                --subnet-id ${SubnetId} \
-                --security-group ${EFS_SG_ID} \
-                --region ${REGION} | jq -r '.MountTargetId')
-            EFS_MOUNT_TARGET_IDS=(${EFS_MOUNT_TARGET_IDS[@]} ${EFS_MOUNT_TARGET_ID})
-        done
-    else
-        EFS_MOUNT_TARGET_IDS=$(aws efs describe-mount-targets --file-system-id ${EFS_ID} --region ${REGION} | jq -r '.MountTargets[].MountTargetId')
-    fi
-
-    _result "EFS_MOUNT_TARGET_IDS=$(echo ${EFS_MOUNT_TARGET_IDS[@]} | xargs)"
-
-    echo
-    echo "Waiting for the state of the EFS mount targets to be available."
-    waiting_for isMountTargetAvailable
-}
-
-efs_delete() {
-    CONFIG_SAVE=true
-
-    if [ "${EFS_ID}" == "" ]; then
-        return
-    fi
-
-    # owned
-    OWNED=$(aws efs describe-file-systems --file-system-id ${EFS_ID} | jq -r '.FileSystems[].Tags[] | values[]' | grep "kubernetes.io/cluster/${CLUSTER_NAME}")
-    if [ "${OWNED}" == "" ]; then
-        # delete mount targets
-        EFS_MOUNT_TARGET_IDS=$(aws efs describe-mount-targets --file-system-id ${EFS_ID} --region ${REGION} | jq -r '.MountTargets[].MountTargetId')
-        for MountTargetId in ${EFS_MOUNT_TARGET_IDS}; do
-            echo "Deleting the mount targets"
-            aws efs delete-mount-target --mount-target-id ${MountTargetId}
-        done
-
-        echo "Waiting for the EFS mount targets to be deleted."
-        waiting_for isMountTargetDeleted
-
-        # delete security group for efs mount targets
-        EFS_SG_ID=$(aws ec2 describe-security-groups --filters "Name=group-name,Values=efs-sg.${CLUSTER_NAME}" | jq -r '.SecurityGroups[0].GroupId')
-        if [ -n ${EFS_SG_ID} ]; then
-            echo "Deleting the security group for mount targets"
-            aws ec2 delete-security-group --group-id ${EFS_SG_ID}
-        fi
-
-        # delete efs
-        if [ -n ${EFS_ID} ]; then
-            echo "Deleting the elastic file system"
-            aws efs delete-file-system --file-system-id ${EFS_ID} --region ${REGION}
-        fi
-    fi
-
-    EFS_ID=
-
-    _result "EFS_ID=${EFS_ID}"
 }
 
 istio_init() {
