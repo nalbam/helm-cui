@@ -417,6 +417,8 @@ helm_install() {
 
     # for ingress
     if [ "${INGRESS}" == "true" ]; then
+        CONFIG_SAVE=true
+
         replace_chart ${CHART} "BASE_DOMAIN" "${BASE_DOMAIN}"
 
         if [ "${ANSWER}" != "" ]; then
