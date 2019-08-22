@@ -15,8 +15,8 @@ sources:
 
 aws:
   credentials:
-    secretKey: AWS_ACCESS_KEY
-    accessKey: AWS_SECRET_KEY
+    accessKey: AWS_ACCESS_KEY
+    secretKey: AWS_SECRET_KEY
 
 rbac:
   create: true
