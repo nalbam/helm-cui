@@ -456,12 +456,22 @@ helm_install() {
         replace_chart ${CHART} "AWS_ACCESS_KEY"
 
         if [ "${ANSWER}" != "" ]; then
+            _replace "s/#:AWS://g" ${CHART}
+
             replace_password ${CHART} "AWS_SECRET_KEY" "****"
         fi
     fi
 
     # for cluster-autoscaler
     if [ "${NAME}" == "cluster-autoscaler" ]; then
+        replace_chart ${CHART} "AWS_ACCESS_KEY"
+
+        if [ "${ANSWER}" != "" ]; then
+            _replace "s/#:AWS://g" ${CHART}
+
+            replace_password ${CHART} "AWS_SECRET_KEY" "****"
+        fi
+
         get_cluster_ip ${NAMESPACE} ${NAME}
 
         if [ "${CLUSTER_IP}" != "" ]; then
