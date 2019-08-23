@@ -1,5 +1,9 @@
 #!/bin/bash
 
+OS_NAME="$(uname | awk '{print tolower($0)}')"
+
+L_PAD=" "
+
 THIS_REPO="nalbam"
 THIS_NAME="helm-cui"
 THIS_VERSION="v0.1.0"
@@ -24,6 +28,5 @@ CLUSTER_NAME=
 ROOT_DOMAIN=
 BASE_DOMAIN=
 
-CERT_MAN=
 EFS_ID=
 ISTIO=

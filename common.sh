@@ -1,9 +1,5 @@
 #!/bin/bash
 
-OS_NAME="$(uname | awk '{print tolower($0)}')"
-
-L_PAD="  "
-
 command -v fzf > /dev/null && FZF=true
 command -v tput > /dev/null && TPUT=true
 
@@ -81,6 +77,14 @@ password() {
     _read "${1:-"Enter your password : "}" 6 S
 }
 
+print_list() {
+    IDX=0
+    while read VAL; do
+        IDX=$(( ${IDX} + 1 ))
+        printf "%2s. %s\n" "${IDX}" "${VAL}"
+    done < ${LIST}
+}
+
 select_one() {
     OPT=$1
 
@@ -94,32 +98,24 @@ select_one() {
     if [ "${OPT}" != "" ] && [ "x${CNT}" == "x1" ]; then
         SELECTED="$(cat ${LIST} | xargs)"
     else
-        # if [ "${FZF}" != "" ]; then
-        #     SELECTED=$(cat ${LIST} | fzf --reverse --no-mouse --height=10 --bind=left:page-up,right:page-down)
-        # else
-            echo
+        echo
 
-            IDX=0
-            while read VAL; do
-                IDX=$(( ${IDX} + 1 ))
-                printf "%3s. %s\n" "${IDX}" "${VAL}"
-            done < ${LIST}
+        print_list
 
-            if [ "${CNT}" != "1" ]; then
-                CNT="1-${CNT}"
-            fi
+        if [ "${CNT}" != "1" ]; then
+            CNT="1-${CNT}"
+        fi
 
-            _read "Please select one. (${CNT}) : " 6
+        _read "Please select one. (${CNT}) : " 6
 
-            if [ -z ${ANSWER} ]; then
-                return
-            fi
-            TEST='^[0-9]+$'
-            if ! [[ ${ANSWER} =~ ${TEST} ]]; then
-                return
-            fi
-            SELECTED=$(sed -n ${ANSWER}p ${LIST})
-        # fi
+        if [ -z ${ANSWER} ]; then
+            return
+        fi
+        TEST='^[0-9]+$'
+        if ! [[ ${ANSWER} =~ ${TEST} ]]; then
+            return
+        fi
+        SELECTED=$(sed -n ${ANSWER}p ${LIST})
     fi
 }
 
@@ -192,11 +188,11 @@ get_template() {
     fi
 }
 
-# update_tools() {
-#     ${SHELL_DIR}/tools.sh
+update_tools() {
+    curl -sL toast.sh/tools | bash
 
-#     _success "Please restart!"
-# }
+    _success "Please restart!"
+}
 
 update_self() {
     pushd ${SHELL_DIR}
@@ -234,7 +230,8 @@ config_load() {
 
         CONFIG=${SHELL_DIR}/build/${CLUSTER_NAME}/config.sh
 
-        kubectl get secret ${THIS_NAME}-config -n default -o json | jq -r '.data.text' | base64 --decode > ${CONFIG}
+        kubectl get secret ${THIS_NAME}-config -n default -o json | \
+            jq -r '.data.text' | base64 --decode > ${CONFIG}
 
         _command "load ${THIS_NAME}-config"
         cat ${CONFIG}
@@ -254,8 +251,6 @@ config_save() {
     echo "CLUSTER_NAME=${CLUSTER_NAME}" >> ${CONFIG}
     echo "ROOT_DOMAIN=${ROOT_DOMAIN}" >> ${CONFIG}
     echo "BASE_DOMAIN=${BASE_DOMAIN}" >> ${CONFIG}
-    echo "ISTIO_DOMAIN=${ISTIO_DOMAIN}" >> ${CONFIG}
-    echo "CERT_MAN=${CERT_MAN}" >> ${CONFIG}
     echo "EFS_ID=${EFS_ID}" >> ${CONFIG}
     echo "ISTIO=${ISTIO}" >> ${CONFIG}
 

@@ -36,7 +36,7 @@ prepare() {
         question "Do you want to install the required tools? (awscli,kubectl,helm...) [Y/n] : "
 
         if [ "${ANSWER:-Y}" == "Y" ]; then
-            ${SHELL_DIR}/tools.sh
+            curl -sL toast.sh/tools | bash
         else
             _error "Need install tools."
         fi
@@ -65,29 +65,11 @@ press_enter() {
         main)
             main_menu
             ;;
-        kube-ingress)
-            charts_menu "kube-ingress"
-            ;;
-        kube-system)
-            charts_menu "kube-system"
-            ;;
-        kong)
-            charts_menu "kong"
-            ;;
-        monitor)
-            charts_menu "monitor"
-            ;;
-        devops)
-            charts_menu "devops"
-            ;;
-        sample)
-            charts_menu "sample"
-            ;;
-        batch)
-            charts_menu "batch"
-            ;;
         istio)
             istio_menu
+            ;;
+        *)
+            charts_menu ${1}
             ;;
     esac
 }
@@ -98,22 +80,23 @@ main_menu() {
     echo
     _echo "0. helm init"
     echo
-    _echo "1. kube-ingress.."
-    _echo "2. kube-system.."
-    _echo "3. monitor.."
-    _echo "4. devops.."
-    _echo "5. batch.."
-    _echo "6. sample.."
+
+    LIST=${SHELL_DIR}/build/${CLUSTER_NAME}/menu-list
+
+    ls -d ${SHELL_DIR}/charts/*/ | rev | cut -d'/' -f2 | rev > ${LIST}
+
+    print_list
+
     echo
     _echo "i. istio.."
     echo
     _echo "d. remove"
-    echo
-    _echo "v. check PV"
-    _echo "s. save variables"
-    echo
-    _echo "u. update self"
-    _echo "t. update tools"
+    # echo
+    # _echo "v. check PV"
+    # _echo "s. save variables"
+    # echo
+    # _echo "u. update self"
+    # _echo "t. update tools"
     echo
     _echo "x. Exit"
 
@@ -123,24 +106,6 @@ main_menu() {
         0)
             helm_init
             press_enter main
-            ;;
-        1)
-            charts_menu "kube-ingress"
-            ;;
-        2)
-            charts_menu "kube-system"
-            ;;
-        3)
-            charts_menu "monitor"
-            ;;
-        4)
-            charts_menu "devops"
-            ;;
-        5)
-            charts_menu "batch"
-            ;;
-        6)
-            charts_menu "sample"
             ;;
         i)
             istio_menu
@@ -169,33 +134,18 @@ main_menu() {
             _success "Good bye!"
             ;;
         *)
+            TEST='^[0-9]+$'
+            if [[ ${ANSWER} =~ ${TEST} ]]; then
+                SELECTED=$(sed -n ${ANSWER}p ${LIST})
+                if [ "${SELECTED}" != "" ]; then
+                    charts_menu "${SELECTED}"
+                    return
+                fi
+            fi
             main_menu
             ;;
     esac
 }
-
-# listup_ing_rules() {
-#     SERVICE_NAME="nginx-ingress-private-controller"
-#     ELB_DNS=$(kubectl -n kube-ingress get svc ${SERVICE_NAME} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-
-#     ELB_ID=$(echo ${ELB_DNS} | cut -d'-' -f 1)
-
-#     SG_ID=$(aws elb describe-load-balancers --load-balancer-name ${ELB_ID} | jq -r '.LoadBalancerDescriptions[] | .SecurityGroups[]')
-
-#     _command "aws ec2 describe-security-groups --group-id ${SG_ID} | jq -r '.SecurityGroups[] | .IpPermissions'"
-#     export SG_INGRESS_RULE=$(aws ec2 describe-security-groups --group-id ${SG_ID} | jq -r '.SecurityGroups[] | .IpPermissions')
-
-#     echo $SG_INGRESS_RULE
-# }
-
-# remove_ing_rule() {
-#     listup_ing_rules
-#     ALL_RULE=$(echo $SG_INGRESS_RULE | jq -rc . )
-
-#     _command "aws ec2 revoke-security-group-ingress --group-id $SG_ID --ip-permissions $ALL_RULE"
-#     aws ec2 revoke-security-group-ingress --group-id $SG_ID --ip-permissions "${ALL_RULE}"
-#     listup_ing_rules
-# }
 
 istio_menu() {
     title
@@ -444,11 +394,13 @@ helm_install() {
     if [ "${NAME}" == "cert-manager" ]; then
         # Install the CustomResourceDefinition resources separately
         # https://github.com/helm/charts/blob/master/stable/cert-manager/README.md
+        _command "kubectl apply -f 00-crds.yaml"
         kubectl apply \
             -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.6/deploy/manifests/00-crds.yaml
 
         # Label the cert-manager namespace to disable resource validation
-        kubectl label namespace ${NAMESPACE} certmanager.k8s.io/disable-validation=true
+        _command "kubectl label namespace ${NAMESPACE} certmanager.k8s.io/disable-validation=true"
+        kubectl label namespace ${NAMESPACE} certmanager.k8s.io/disable-validation=true --overwrite
     fi
 
     # for external-dns
@@ -688,24 +640,19 @@ helm_install() {
         create_pdb ${NAMESPACE} ${NAME} ${PDB_MIN:-N} ${PDB_MAX:-N}
     fi
 
-    _command "helm history ${NAME}"
-    helm history ${NAME}
+    # helm history
+    helm_history
 
-    # waiting 2
-    waiting_pod "${NAMESPACE}" "${NAME}"
-
-    _command "kubectl get deploy,pod,svc,ing,pvc,pv -n ${NAMESPACE}"
-    kubectl get deploy,pod,svc,ing,pvc,pv -n ${NAMESPACE}
+    # for cert-manager
+    if [ "${NAME}" == "cert-manager" ]; then
+        _command "kubectl apply -f cluster-issuer.yaml"
+        kubectl apply -f ${SHELL_DIR}/templates/cluster-issuer.yaml
+    fi
 
     # for efs-provisioner
     if [ "${NAME}" == "efs-provisioner" ]; then
         _command "kubectl get sc -n ${NAMESPACE}"
         kubectl get sc -n ${NAMESPACE}
-    fi
-
-    # for argo
-    if [ "${NAME}" == "argo" ]; then
-        create_cluster_role_binding admin ${NAMESPACE} default
     fi
 
     # for jenkins
@@ -719,12 +666,34 @@ helm_install() {
         create_cluster_role_binding view ${NAMESPACE} ${NAME}-view true
     fi
 
+    # for argo
+    if [ "${NAME}" == "argo" ]; then
+        create_cluster_role_binding admin ${NAMESPACE} default
+    fi
+
+    # for argocd
+    if [ "${NAME}" == "argocd" ]; then
+        create_cluster_role_binding cluster-admin ${NAMESPACE} argocd-server
+        create_cluster_role_binding cluster-admin ${NAMESPACE} argocd-application-controller
+    fi
+
     # chart ingress = true
     if [ "${INGRESS}" == "true" ]; then
         if [ "${INGRESS_DOMAIN}" != "" ]; then
             _result "${NAME}: http://${INGRESS_DOMAIN}"
         fi
     fi
+}
+
+helm_history() {
+    # waiting 2
+    waiting_pod "${NAMESPACE}" "${NAME}"
+
+    _command "helm history ${NAME}"
+    helm history ${NAME}
+
+    _command "kubectl get deploy,pod,svc,ing,pvc,pv -n ${NAMESPACE}"
+    kubectl get deploy,pod,svc,ing,pvc,pv -n ${NAMESPACE}
 }
 
 helm_delete() {
@@ -861,24 +830,24 @@ create_namespace() {
     fi
 }
 
-create_service_account() {
-    _NAMESPACE=$1
-    _ACCOUNT=$2
+# create_service_account() {
+#     _NAMESPACE=$1
+#     _ACCOUNT=$2
 
-    create_namespace ${_NAMESPACE}
+#     create_namespace ${_NAMESPACE}
 
-    CHECK=
+#     CHECK=
 
-    _command "kubectl get sa ${_ACCOUNT} -n ${_NAMESPACE}"
-    kubectl get sa ${_ACCOUNT} -n ${_NAMESPACE} > /dev/null 2>&1 || export CHECK=CREATE
+#     _command "kubectl get sa ${_ACCOUNT} -n ${_NAMESPACE}"
+#     kubectl get sa ${_ACCOUNT} -n ${_NAMESPACE} > /dev/null 2>&1 || export CHECK=CREATE
 
-    if [ "${CHECK}" == "CREATE" ]; then
-        _result "${_NAMESPACE}:${_ACCOUNT}"
+#     if [ "${CHECK}" == "CREATE" ]; then
+#         _result "${_NAMESPACE}:${_ACCOUNT}"
 
-        _command "kubectl create sa ${_ACCOUNT} -n ${_NAMESPACE}"
-        kubectl create sa ${_ACCOUNT} -n ${_NAMESPACE}
-    fi
-}
+#         _command "kubectl create sa ${_ACCOUNT} -n ${_NAMESPACE}"
+#         kubectl create sa ${_ACCOUNT} -n ${_NAMESPACE}
+#     fi
+# }
 
 create_cluster_role_binding() {
     _ROLE=$1
@@ -886,19 +855,15 @@ create_cluster_role_binding() {
     _ACCOUNT=${3:-default}
     _TOKEN=${4:-false}
 
-    create_service_account ${_NAMESPACE} ${_ACCOUNT}
+    YAML=${SHELL_DIR}/build/${CLUSTER_NAME}/crb-${_ROLE}-${_NAMESPACE}-${_ACCOUNT}.yaml
+    get_template templates/cluster-role.yaml ${YAML}
 
-    CHECK=
+    _replace "s|ROLENAME|${_ROLE}|g" ${YAML}
+    _replace "s|USERNAME|${_ACCOUNT}|g" ${YAML}
+    _replace "s|NAMESPACE|${_NAMESPACE}|g" ${YAML}
 
-    _command "kubectl get clusterrolebinding ${_ROLE}:${_NAMESPACE}:${_ACCOUNT}"
-    kubectl get clusterrolebinding ${_ROLE}:${_NAMESPACE}:${_ACCOUNT} > /dev/null 2>&1 || export CHECK=CREATE
-
-    if [ "${CHECK}" == "CREATE" ]; then
-        _result "${_ROLE}:${_NAMESPACE}:${_ACCOUNT}"
-
-        _command "kubectl create clusterrolebinding ${_ROLE}:${_NAMESPACE}:${_ACCOUNT} --clusterrole=${_ROLE} --serviceaccount=${_NAMESPACE}:${_ACCOUNT}"
-        kubectl create clusterrolebinding ${_ROLE}:${_NAMESPACE}:${_ACCOUNT} --clusterrole=${_ROLE} --serviceaccount=${_NAMESPACE}:${_ACCOUNT}
-    fi
+    _command "kubectl apply -n ${_NAMESPACE} -f ${YAML}"
+    kubectl apply -n ${_NAMESPACE} -f ${YAML}
 
     if [ "${_TOKEN}" == "true" ]; then
         SECRET=$(kubectl get secret -n ${_NAMESPACE} | grep ${_ACCOUNT}-token | awk '{print $1}')
@@ -1120,9 +1085,9 @@ delete_pvc() {
     NAMESPACE=$1
     PVC_NAME=$2
 
-#    POD=$(kubectl -n ${NAMESPACE} get pod -l app=${PVC_NAME} -o jsonpath='{.items[0].metadata.name}')
     _command "kubectl -n ${NAMESPACE} get pod | grep ${PVC_NAME} | awk '{print \$1}'"
     POD=$(kubectl -n ${NAMESPACE} get pod | grep ${PVC_NAME} | awk '{print $1}')
+
     # Should be deleted releated POD
     if [ -z $POD ]; then
         _command "kubectl delete pvc $PVC_NAME -n $NAMESPACE"
@@ -1245,7 +1210,9 @@ istio_init() {
     ISTIO_TMP=${SHELL_DIR}/build/istio
     mkdir -p ${ISTIO_TMP}
 
-    CHART=${SHELL_DIR}/charts/istio/istio.yaml
+    CHART=${SHELL_DIR}/build/${CLUSTER_NAME}/istio.yaml
+    get_template templates/istio/values.yaml ${CHART}
+
     VERSION=$(cat ${CHART} | grep '# chart-version:' | awk '{print $3}')
 
     if [ "${VERSION}" == "" ] || [ "${VERSION}" == "latest" ]; then
@@ -1272,16 +1239,16 @@ istio_init() {
     ISTIO_DIR=${ISTIO_TMP}/${NAME}-${VERSION}/install/kubernetes/helm/istio
 }
 
-istio_secret() {
-    YAML=${SHELL_DIR}/build/${CLUSTER_NAME}/istio-secret.yaml
-    get_template templates/istio-secret.yaml ${YAML}
+# istio_secret() {
+#     YAML=${SHELL_DIR}/build/${CLUSTER_NAME}/istio-secret.yaml
+#     get_template templates/istio-secret.yaml ${YAML}
 
-    replace_base64 ${YAML} "USERNAME" "admin"
-    replace_base64 ${YAML} "PASSWORD" "password"
+#     replace_base64 ${YAML} "USERNAME" "admin"
+#     replace_base64 ${YAML} "PASSWORD" "password"
 
-    _command "kubectl apply -n ${NAMESPACE} -f ${YAML}"
-    kubectl apply -n ${NAMESPACE} -f ${YAML}
-}
+#     _command "kubectl apply -n ${NAMESPACE} -f ${YAML}"
+#     kubectl apply -n ${NAMESPACE} -f ${YAML}
+# }
 
 istio_show_pod_ips() {
     export PILOT_POD_IP=$(kubectl -n istio-system get pod -l istio=pilot -o jsonpath='{.items[0].status.podIP}')
@@ -1359,8 +1326,6 @@ EOF
 
     _command "ls -aslF ${KUBECFG_FILE} ${KUBECFG_ENV_FILE}"
     ls -aslF ${KUBECFG_FILE} ${KUBECFG_ENV_FILE}
-#    ls -aslF ${KUBECFG_FILE}
-#    ls -aslF ${KUBECFG_ENV_FILE}
 }
 
 waiting_istio_init() {
@@ -1389,29 +1354,14 @@ istio_install() {
 
     create_namespace ${NAMESPACE}
 
-    # istio 1.1.x init
-    if [[ "${VERSION}" == "1.1."* ]]; then
-        _command "helm upgrade --install ${ISTIO_DIR}-init --name istio-init --namespace ${NAMESPACE}"
-        helm upgrade --install istio-init ${ISTIO_DIR}-init --namespace ${NAMESPACE}
+    _command "helm upgrade --install istio-init ${ISTIO_DIR}-init --namespace ${NAMESPACE}"
+    helm upgrade --install istio-init ${ISTIO_DIR}-init --namespace ${NAMESPACE}
 
-        # result will be more than 53
-        waiting_istio_init
-    fi
+    # result will be more than 53
+    waiting_istio_init
 
-    get_base_domain
-
-    CHART=${SHELL_DIR}/build/${CLUSTER_NAME}/${NAME}.yaml
-    get_template charts/istio/${NAME}.yaml ${CHART}
-
-    # # ingress
-    # if [ -z ${BASE_DOMAIN} ]; then
-    #     _replace "s/SERVICE_TYPE/LoadBalancer/g" ${CHART}
-    #     _replace "s/INGRESS_ENABLED/false/g" ${CHART}
-    # else
-    #     _replace "s/SERVICE_TYPE/ClusterIP/g" ${CHART}
-    #     _replace "s/INGRESS_ENABLED/true/g" ${CHART}
-    #     _replace "s/BASE_DOMAIN/${BASE_DOMAIN}/g" ${CHART}
-    # fi
+    CHART=${SHELL_DIR}/build/${CLUSTER_NAME}/istio.yaml
+    get_template templates/istio/values.yaml ${CHART}
 
     # # istio secret
     # istio_secret
@@ -1420,35 +1370,14 @@ istio_install() {
     _command "helm upgrade --install ${NAME} ${ISTIO_DIR} --namespace ${NAMESPACE} --values ${CHART}"
     helm upgrade --install ${NAME} ${ISTIO_DIR} --namespace ${NAMESPACE} --values ${CHART}
 
-    # kiali sa
-    # create_cluster_role_binding view ${NAMESPACE} kiali-service-account
-
     ISTIO=true
     CONFIG_SAVE=true
 
     # save config (ISTIO)
     config_save
 
-    # waiting 2
-    waiting_pod "${NAMESPACE}" "${NAME}"
-
-
-    # Route53 set record with ISTIO_DOMAIN not BASE_DOMAIN
-    PREV_BASE_DOMAIN=${BASE_DOMAIN}
-    PREV_ISTIO_DOMAIN=${ISTIO_DOMAIN}
-
-    BASE_DOMAIN=${ISTIO_DOMAIN}
-    set_base_domain "istio-ingressgateway"
-
-    ISTIO_DOMAIN=${PREV_ISTIO_DOMAIN}
-    BASE_DOMAIN=${PREV_BASE_DOMAIN}
-
-
-    _command "helm history ${NAME}"
-    helm history ${NAME}
-
-    _command "kubectl get deploy,pod,svc,ing -n ${NAMESPACE}"
-    kubectl get deploy,pod,svc,ing -n ${NAMESPACE}
+    # helm history
+    helm_history
 }
 
 istio_remote_install() {
@@ -1460,8 +1389,8 @@ istio_remote_install() {
 
     create_namespace ${NAMESPACE}
 
-    CHART=${SHELL_DIR}/build/${THIS_NAME}-istio-${NAME}.yaml
-    get_template charts/istio/${NAME}.yaml ${CHART}
+    CHART=${SHELL_DIR}/build/${CLUSTER_NAME}/istio.yaml
+    get_template templates/istio/values.yaml ${CHART}
 
     if [ -z ${PILOT_POD_IP} ]; then
         echo "PILOT_POD_IP=$PILOT_POD_IP"
@@ -1494,14 +1423,8 @@ istio_remote_install() {
     # save config (ISTIO)
     config_save
 
-    # waiting 2
-    waiting_pod "${NAMESPACE}" "${RNAME}"
-
-    _command "helm history ${RNAME}"
-    helm history ${RNAME}
-
-    _command "kubectl get deploy,pod,svc -n ${NAMESPACE}"
-    kubectl get deploy,pod,svc -n ${NAMESPACE}
+    # helm history
+    helm_history
 }
 
 istio_injection() {
