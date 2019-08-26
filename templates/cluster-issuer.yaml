@@ -2,6 +2,10 @@ apiVersion: certmanager.k8s.io/v1alpha1
 kind: ClusterIssuer
 metadata:
   name: letsencrypt-prod
+  labels:
+    app: letsencrypt-prod
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/name: letsencrypt-prod
 spec:
   acme:
     server: https://acme-v02.api.letsencrypt.org/directory
@@ -16,6 +20,10 @@ apiVersion: certmanager.k8s.io/v1alpha1
 kind: ClusterIssuer
 metadata:
   name: letsencrypt-staging
+  labels:
+    app: letsencrypt-staging
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/name: letsencrypt-staging
 spec:
   acme:
     server: https://acme-staging-v02.api.letsencrypt.org/directory

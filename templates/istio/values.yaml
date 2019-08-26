@@ -7,6 +7,19 @@ global:
     enableHttps: true
     gatewayName: ingressgateway
 
+gateways:
+  istio-ingressgateway:
+    enabled: true
+    # sds:
+    #   enabled: true
+
+  istio-egressgateway:
+    enabled: true
+
+# certmanager:
+#   enabled: true
+#   email: me@nalbam.com
+
 grafana:
   enabled: true
 
@@ -16,11 +29,3 @@ tracing:
 kiali:
   enabled: true
   createDemoSecret: true
-
-gateways:
-  istio-ingressgateway:
-    sds:
-      enabled: true
-
-  # istio-egressgateway:
-  #   enabled: true

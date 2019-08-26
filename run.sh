@@ -333,7 +333,9 @@ helm_install() {
     if [ "${INGRESS}" == "true" ]; then
         CONFIG_SAVE=true
 
-        replace_chart ${CHART} "BASE_DOMAIN" "${BASE_DOMAIN}"
+        read_root_domain
+
+        replace_chart ${CHART} "BASE_DOMAIN" "${BASE_DOMAIN:-$CLUSTER_NAME.$ROOT_DOMAIN}"
 
         if [ "${ANSWER}" != "" ]; then
             BASE_DOMAIN="${ANSWER}"
@@ -606,6 +608,12 @@ helm_install() {
 
     # helm history
     helm_history
+
+    # for nginx-ingress
+    if [[ "${NAME}" == "nginx-ingress"* ]]; then
+        # base domain
+        set_base_domain "${NAME}"
+    fi
 
     # for cert-manager
     if [ "${NAME}" == "cert-manager" ]; then
@@ -1148,6 +1156,8 @@ istio_init() {
     NAME="istio"
     NAMESPACE="istio-system"
 
+    create_namespace ${NAMESPACE}
+
     ISTIO_TMP=${SHELL_DIR}/build/istio
     mkdir -p ${ISTIO_TMP}
 
@@ -1304,21 +1314,19 @@ waiting_istio_init() {
 istio_install() {
     istio_init
 
-    create_namespace ${NAMESPACE}
-
     _command "helm upgrade --install istio-init ${ISTIO_DIR}-init --namespace ${NAMESPACE}"
     helm upgrade --install istio-init ${ISTIO_DIR}-init --namespace ${NAMESPACE}
 
     # result will be more than 23
     waiting_istio_init 23
 
+    # istio secret
+    istio_secret
+
     # CHART=${ISTIO_DIR}/values-istio-demo.yaml
 
     CHART=${SHELL_DIR}/build/${CLUSTER_NAME}/istio.yaml
     get_template templates/istio/values.yaml ${CHART}
-
-    # istio secret
-    istio_secret
 
     # helm install
     _command "helm upgrade --install ${NAME} ${ISTIO_DIR} --namespace ${NAMESPACE} --values ${CHART}"
@@ -1328,7 +1336,9 @@ istio_install() {
     YAML=${SHELL_DIR}/build/${CLUSTER_NAME}/istio-ingress.yaml
     get_template templates/istio/ingress.yaml ${YAML}
 
-    replace_chart ${YAML} "ISTIO_DOMAIN" "${ISTIO_DOMAIN}"
+    read_root_domain
+
+    replace_chart ${YAML} "ISTIO_DOMAIN" "${ISTIO_DOMAIN:-$CLUSTER_NAME.$ROOT_DOMAIN}"
 
     if [ "${ANSWER}" != "" ]; then
         ISTIO_DOMAIN="${ANSWER}"
@@ -1347,8 +1357,8 @@ istio_install() {
     # helm history
     helm_history
 
-    # elb domain
-    get_elb_domain "ingressgateway"
+    # base domain
+    set_base_domain "istio-ingressgateway" "istio-"
 }
 
 istio_remote_install() {
@@ -1357,8 +1367,6 @@ istio_remote_install() {
     RNAME="istio-remote"
 
     RISTIO_DIR="${ISTIO_DIR}-remote"
-
-    create_namespace ${NAMESPACE}
 
     CHART=${SHELL_DIR}/build/${CLUSTER_NAME}/istio-remote.yaml
     get_template templates/istio/values.yaml ${CHART}
@@ -1616,8 +1624,8 @@ get_ssl_cert_arn() {
     fi
 
     # get certificate arn
-    _command "aws acm list-certificates | DOMAIN="${SUB_DOMAIN}.${BASE_DOMAIN}" jq -r '.CertificateSummaryList[] | select(.DomainName==env.DOMAIN) | .CertificateArn'"
-    SSL_CERT_ARN=$(aws acm list-certificates | DOMAIN="${SUB_DOMAIN}.${BASE_DOMAIN}" jq -r '.CertificateSummaryList[] | select(.DomainName==env.DOMAIN) | .CertificateArn')
+    _command "aws acm list-certificates | DOMAIN="${SUB_DOMAIN}${BASE_DOMAIN}" jq -r '.CertificateSummaryList[] | select(.DomainName==env.DOMAIN) | .CertificateArn'"
+    SSL_CERT_ARN=$(aws acm list-certificates | DOMAIN="${SUB_DOMAIN}${BASE_DOMAIN}" jq -r '.CertificateSummaryList[] | select(.DomainName==env.DOMAIN) | .CertificateArn')
 }
 
 req_ssl_cert_arn() {
@@ -1626,8 +1634,8 @@ req_ssl_cert_arn() {
     fi
 
     # request certificate
-    _command "aws acm request-certificate --domain-name "${SUB_DOMAIN}.${BASE_DOMAIN}" --validation-method DNS | jq -r '.CertificateArn'"
-    SSL_CERT_ARN=$(aws acm request-certificate --domain-name "${SUB_DOMAIN}.${BASE_DOMAIN}" --validation-method DNS | jq -r '.CertificateArn')
+    _command "aws acm request-certificate --domain-name "${SUB_DOMAIN}${BASE_DOMAIN}" --validation-method DNS | jq -r '.CertificateArn'"
+    SSL_CERT_ARN=$(aws acm request-certificate --domain-name "${SUB_DOMAIN}${BASE_DOMAIN}" --validation-method DNS | jq -r '.CertificateArn')
 
     _result "Request Certificate..."
 
@@ -1706,7 +1714,7 @@ set_record_alias() {
     get_template templates/record-sets-alias.json ${RECORD}
 
     # replace
-    _replace "s/DOMAIN/${SUB_DOMAIN}.${BASE_DOMAIN}/g" ${RECORD}
+    _replace "s/DOMAIN/${SUB_DOMAIN}${BASE_DOMAIN}/g" ${RECORD}
     _replace "s/ZONE_ID/${ELB_ZONE_ID}/g" ${RECORD}
     _replace "s/DNS_NAME/${ELB_DNS_NAME}/g" ${RECORD}
 
@@ -1741,7 +1749,7 @@ set_record_delete() {
     get_template templates/record-sets-delete.json ${RECORD}
 
     # replace
-    _replace "s/DOMAIN/${SUB_DOMAIN}.${BASE_DOMAIN}/g" ${RECORD}
+    _replace "s/DOMAIN/${SUB_DOMAIN}${BASE_DOMAIN}/g" ${RECORD}
 
     cat ${RECORD}
 
@@ -1753,7 +1761,7 @@ set_record_delete() {
 set_base_domain() {
     POD="${1:-nginx-ingress}"
 
-    SUB_DOMAIN=${2:-"*"}
+    SUB_DOMAIN=${2:-"*."}
 
     _result "Pending ELB..."
 
@@ -1767,7 +1775,7 @@ set_base_domain() {
 }
 
 get_base_domain() {
-    SUB_DOMAIN=${1:-"*"}
+    SUB_DOMAIN=${1:-"*."}
 
     PREV_ROOT_DOMAIN="${ROOT_DOMAIN}"
     PREV_BASE_DOMAIN="${BASE_DOMAIN}"
@@ -1789,41 +1797,31 @@ get_base_domain() {
         question "Enter your ingress domain [${DEFAULT}] : "
 
         BASE_DOMAIN=${ANSWER:-${DEFAULT}}
+
         if [[ "${BASE_DOMAIN}" == "istio"* ]]; then
             ISTIO_DOMAIN=${BASE_DOMAIN}
         fi
     fi
 
-    # certificate
-    if [ ! -z ${BASE_DOMAIN} ]; then
-        get_ssl_cert_arn
+    # # certificate
+    # if [ ! -z ${BASE_DOMAIN} ]; then
+    #     get_ssl_cert_arn
 
-        if [ -z ${SSL_CERT_ARN} ]; then
-            req_ssl_cert_arn
-        fi
-        if [ -z ${SSL_CERT_ARN} ]; then
-            _error "Certificate ARN does not exists. [${ROOT_DOMAIN}][${SUB_DOMAIN}.${BASE_DOMAIN}][${REGION}]"
-        fi
+    #     if [ -z ${SSL_CERT_ARN} ]; then
+    #         req_ssl_cert_arn
+    #     fi
+    #     if [ -z ${SSL_CERT_ARN} ]; then
+    #         _error "Certificate ARN does not exists. [${ROOT_DOMAIN}][${SUB_DOMAIN}${BASE_DOMAIN}][${REGION}]"
+    #     fi
 
-        _result "CertificateArn: ${SSL_CERT_ARN}"
+    #     _result "CertificateArn: ${SSL_CERT_ARN}"
 
-        TEXT="aws-load-balancer-ssl-cert"
-        _replace "s@${TEXT}:.*@${TEXT}: ${SSL_CERT_ARN}@" ${CHART}
+    #     TEXT="aws-load-balancer-ssl-cert"
+    #     _replace "s@${TEXT}:.*@${TEXT}: ${SSL_CERT_ARN}@" ${CHART}
 
-        TEXT="external-dns.alpha.kubernetes.io/hostname"
-        _replace "s@${TEXT}:.*@${TEXT}: \"${SUB_DOMAIN}.${BASE_DOMAIN}.\"@" ${CHART}
-    fi
-
-    # private ingress controller should not be BASE_DOMAIN
-    if [[ "${BASE_DOMAIN}" == *"private"* ]] || [[ "${BASE_DOMAIN}" == "istio"* ]]; then
-
-      question "Replace BASE_DOMAIN? ( YES(${BASE_DOMAIN}) / [No(${PREV_BASE_DOMAIN})] ) : "
-
-      if [ "${ANSWER}" != "YES" ]; then
-        BASE_DOMAIN="${PREV_BASE_DOMAIN}"
-      fi
-
-    fi
+    #     TEXT="external-dns.alpha.kubernetes.io/hostname"
+    #     _replace "s@${TEXT}:.*@${TEXT}: \"${SUB_DOMAIN}${BASE_DOMAIN}.\"@" ${CHART}
+    # fi
 
     CONFIG_SAVE=true
 }
