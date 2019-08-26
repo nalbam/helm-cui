@@ -830,25 +830,6 @@ create_namespace() {
     fi
 }
 
-# create_service_account() {
-#     _NAMESPACE=$1
-#     _ACCOUNT=$2
-
-#     create_namespace ${_NAMESPACE}
-
-#     CHECK=
-
-#     _command "kubectl get sa ${_ACCOUNT} -n ${_NAMESPACE}"
-#     kubectl get sa ${_ACCOUNT} -n ${_NAMESPACE} > /dev/null 2>&1 || export CHECK=CREATE
-
-#     if [ "${CHECK}" == "CREATE" ]; then
-#         _result "${_NAMESPACE}:${_ACCOUNT}"
-
-#         _command "kubectl create sa ${_ACCOUNT} -n ${_NAMESPACE}"
-#         kubectl create sa ${_ACCOUNT} -n ${_NAMESPACE}
-#     fi
-# }
-
 create_cluster_role_binding() {
     _ROLE=$1
     _NAMESPACE=$2
