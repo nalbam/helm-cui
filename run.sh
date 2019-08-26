@@ -776,17 +776,13 @@ helm_repo_update() {
 create_namespace() {
     _NAMESPACE=$1
 
-    CHECK=
+    YAML=${SHELL_DIR}/build/${CLUSTER_NAME}/ns-${_NAMESPACE}.yaml
+    get_template templates/namespace.yaml ${YAML}
 
-    _command "kubectl get ns ${_NAMESPACE}"
-    kubectl get ns ${_NAMESPACE} > /dev/null 2>&1 || export CHECK=CREATE
+    _replace "s|NAMESPACE|${_NAMESPACE}|g" ${YAML}
 
-    if [ "${CHECK}" == "CREATE" ]; then
-        _result "${_NAMESPACE}"
-
-        _command "kubectl create ns ${_NAMESPACE}"
-        kubectl create ns ${_NAMESPACE}
-    fi
+    _command "kubectl apply -f ${YAML}"
+    kubectl apply -f ${YAML}
 }
 
 create_cluster_role_binding() {
@@ -1179,16 +1175,16 @@ istio_init() {
     ISTIO_DIR=${ISTIO_TMP}/${NAME}-${VERSION}/install/kubernetes/helm/istio
 }
 
-# istio_secret() {
-#     YAML=${SHELL_DIR}/build/${CLUSTER_NAME}/istio-secret.yaml
-#     get_template templates/istio-secret.yaml ${YAML}
+istio_secret() {
+    YAML=${SHELL_DIR}/build/${CLUSTER_NAME}/istio-secret.yaml
+    get_template templates/istio/secret.yaml ${YAML}
 
-#     replace_base64 ${YAML} "USERNAME" "admin"
-#     replace_base64 ${YAML} "PASSWORD" "password"
+    replace_base64 ${YAML} "USERNAME" "admin"
+    replace_base64 ${YAML} "PASSWORD" "password"
 
-#     _command "kubectl apply -n ${NAMESPACE} -f ${YAML}"
-#     kubectl apply -n ${NAMESPACE} -f ${YAML}
-# }
+    _command "kubectl apply -n ${NAMESPACE} -f ${YAML}"
+    kubectl apply -n ${NAMESPACE} -f ${YAML}
+}
 
 istio_show_pod_ips() {
     export PILOT_POD_IP=$(kubectl -n istio-system get pod -l istio=pilot -o jsonpath='{.items[0].status.podIP}')
@@ -1269,15 +1265,16 @@ EOF
 }
 
 waiting_istio_init() {
-    SEC=10
-    RET=0
+    MAX=${1:-28}
+    SEC=${2:-10}
+
     IDX=0
     while true; do
         RET=$(echo -e `kubectl get crds | grep 'istio.io\|certmanager.k8s.io' | wc -l`)
-        printf ${RET}
+        printf "${RET} "
 
-        if [ ${RET} -gt 52 ]; then
-            echo " init ok"
+        if [ ${RET} -ge ${MAX} ]; then
+            echo "istio_init ok"
             break
         elif [ "x${IDX}" == "x${SEC}" ]; then
             _result "Timeout"
@@ -1297,14 +1294,14 @@ istio_install() {
     _command "helm upgrade --install istio-init ${ISTIO_DIR}-init --namespace ${NAMESPACE}"
     helm upgrade --install istio-init ${ISTIO_DIR}-init --namespace ${NAMESPACE}
 
-    # result will be more than 53
-    waiting_istio_init
+    # result will be more than 28
+    waiting_istio_init 28
 
     CHART=${SHELL_DIR}/build/${CLUSTER_NAME}/istio.yaml
     get_template templates/istio/values.yaml ${CHART}
 
-    # # istio secret
-    # istio_secret
+    # istio secret
+    istio_secret
 
     # helm install
     _command "helm upgrade --install ${NAME} ${ISTIO_DIR} --namespace ${NAMESPACE} --values ${CHART}"
@@ -1320,11 +1317,8 @@ istio_install() {
         ISTIO_DOMAIN="${ANSWER}"
     fi
 
-    # global
-    _replace "s/NAMESPACE/${NAMESPACE}/g" ${YAML}
-
-    _command "kubectl apply -f ${YAML}"
-    kubectl apply -f ${YAML}
+    _command "kubectl apply -n ${NAMESPACE} -f ${YAML}"
+    kubectl apply -n ${NAMESPACE} -f ${YAML}
 
     # config
     ISTIO=true
@@ -1346,7 +1340,7 @@ istio_remote_install() {
 
     create_namespace ${NAMESPACE}
 
-    CHART=${SHELL_DIR}/build/${CLUSTER_NAME}/istio.yaml
+    CHART=${SHELL_DIR}/build/${CLUSTER_NAME}/istio-remote.yaml
     get_template templates/istio/values.yaml ${CHART}
 
     if [ -z ${PILOT_POD_IP} ]; then
@@ -1830,7 +1824,7 @@ replace_chart() {
 
     _result "${_KEY}: ${ANSWER}"
 
-    _replace "s|${_KEY}|${ANSWER}|g" ${CHART}
+    _replace "s|${_KEY}|${ANSWER}|g" ${_CHART}
 }
 
 replace_password() {

@@ -266,8 +266,8 @@ config_save() {
         cat ${CONFIG} | base64 -w 0 > ${ENCODED}
     fi
 
-    CONFIG=${SHELL_DIR}/build/${CLUSTER_NAME}/config.yaml
-    get_template templates/config.yaml ${CONFIG}
+    CONFIG=${SHELL_DIR}/build/${CLUSTER_NAME}/secret-config.yaml
+    get_template templates/secret-config.yaml ${CONFIG}
 
     _replace "s/REPLACE-ME/${THIS_NAME}-config/" ${CONFIG}
 
@@ -327,8 +327,8 @@ variables_save() {
         cat ${CONFIG} | base64 -w 0 > ${ENCODED}
     fi
 
-    CONFIG=${SHELL_DIR}/build/${CLUSTER_NAME}/variables.yaml
-    get_template templates/groovy.yaml ${CONFIG}
+    CONFIG=${SHELL_DIR}/build/${CLUSTER_NAME}/secret-groovy.yaml
+    get_template templates/secret-groovy.yaml ${CONFIG}
 
     _replace "s/REPLACE-ME/groovy-variables/" ${CONFIG}
 
