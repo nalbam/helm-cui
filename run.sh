@@ -164,8 +164,8 @@ istio_menu() {
     echo
     _echo "9. remove"
     echo
-    _echo "k. kiali service open"
     _echo "j. jaeger service open"
+    _echo "k. kiali service open"
 
     question
 
@@ -206,59 +206,18 @@ istio_menu() {
             istio_delete
             press_enter istio
             ;;
-        k)
-            apply_vs_kiali
+        j)
+            istio_service_open "jaeger"
             press_enter istio
             ;;
-        j)
-            apply_vs_jaeger
+        k)
+            istio_service_open "kiali"
             press_enter istio
             ;;
         *)
             main_menu
             ;;
     esac
-}
-
-apply_vs_kiali() {
-
-    DEFAULT_ADDR="kiali.${ISTIO_DOMAIN}"
-    question "Enter host address for Kiali [${DEFAULT_ADDR}] : "
-
-    KIALI_DOMAIN=${ANSWER:-${DEFAULT_ADDR}}
-
-    CHART=${SHELL_DIR}/build/${CLUSTER_NAME}/istio-${NAME}.yaml
-    get_template charts/istio/vs-kiali.yaml ${CHART}
-
-    _replace "s/REPLACE_ME/${KIALI_DOMAIN}/g" ${CHART}
-
-    _command "kubectl apply -f ${CHART}"
-    kubectl apply -f ${CHART}
-
-    echo
-    _result "Connect - http://${KIALI_DOMAIN}/kiali"
-    _result "Default ID/PW : admin/admin"
-
-}
-
-apply_vs_jaeger() {
-
-    DEFAULT_ADDR="jaeger.${ISTIO_DOMAIN}"
-    question "Enter host address for Jaeger [${DEFAULT_ADDR}] : "
-
-    JAEGER_DOMAIN=${ANSWER:-${DEFAULT_ADDR}}
-
-    CHART=${SHELL_DIR}/build/${CLUSTER_NAME}/istio-${NAME}.yaml
-    get_template charts/istio/vs-jaeger.yaml ${CHART}
-
-    _replace "s/REPLACE_ME/${JAEGER_DOMAIN}/g" ${CHART}
-
-    _command "kubectl apply -f ${CHART}"
-    kubectl apply -f ${CHART}
-
-    echo
-    _result "Connect - http://${JAEGER_DOMAIN}"
-
 }
 
 charts_menu() {
@@ -1351,6 +1310,23 @@ istio_install() {
     _command "helm upgrade --install ${NAME} ${ISTIO_DIR} --namespace ${NAMESPACE} --values ${CHART}"
     helm upgrade --install ${NAME} ${ISTIO_DIR} --namespace ${NAMESPACE} --values ${CHART}
 
+    # ingress
+    YAML=${SHELL_DIR}/build/${CLUSTER_NAME}/istio-ingress.yaml
+    get_template templates/istio/ingress.yaml ${YAML}
+
+    replace_chart ${YAML} "ISTIO_DOMAIN" "${ISTIO_DOMAIN}"
+
+    if [ "${ANSWER}" != "" ]; then
+        ISTIO_DOMAIN="${ANSWER}"
+    fi
+
+    # global
+    _replace "s/NAMESPACE/${NAMESPACE}/g" ${YAML}
+
+    _command "kubectl apply -f ${YAML}"
+    kubectl apply -f ${YAML}
+
+    # config
     ISTIO=true
     CONFIG_SAVE=true
 
@@ -1406,6 +1382,25 @@ istio_remote_install() {
 
     # helm history
     helm_history
+}
+
+istio_service_open() {
+    NAME="$1"
+
+    YAML=${SHELL_DIR}/build/${CLUSTER_NAME}/istio-vs-${NAME}.yaml
+    get_template templates/istio/vs-${NAME}.yaml ${YAML}
+
+    replace_chart ${YAML} "ISTIO_DOMAIN" "${ISTIO_DOMAIN}"
+
+    if [ "${ANSWER}" != "" ]; then
+        ISTIO_DOMAIN="${ANSWER}"
+    fi
+
+    _command "kubectl apply -f ${YAML}"
+    kubectl apply -f ${YAML}
+
+    echo
+    _result "Connect - https://${ISTIO_DOMAIN}/${NAME}"
 }
 
 istio_injection() {

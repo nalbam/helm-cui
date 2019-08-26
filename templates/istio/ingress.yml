@@ -1,9 +1,7 @@
-# ------------------- Ingress ------------------- #
-
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
-  name: istio-igw
+  name: istio-ingressgateway
   namespace: NAMESPACE
   annotations:
     kubernetes.io/ingress.class: nginx
@@ -11,13 +9,13 @@ metadata:
     certmanager.k8s.io/cluster-issuer: "letsencrypt-prod"
 spec:
   rules:
-  - host: istio-igw-NAMESPACE.BASE_DOMAIN
-    http:
-      paths:
-      - backend:
-          serviceName: istio-ingressgateway
-          servicePort: http
+    - host: ISTIO_DOMAIN
+      http:
+        paths:
+          - backend:
+              serviceName: istio-ingressgateway
+              servicePort: http
   tls:
-  - hosts:
-    - istio-igw-NAMESPACE.BASE_DOMAIN
-    secretName: istio-igw-tls
+    - hosts:
+        - ISTIO_DOMAIN
+      secretName: istio-ingressgateway-tls

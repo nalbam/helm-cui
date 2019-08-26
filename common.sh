@@ -253,6 +253,7 @@ config_save() {
     echo "BASE_DOMAIN=${BASE_DOMAIN}" >> ${CONFIG}
     echo "EFS_ID=${EFS_ID}" >> ${CONFIG}
     echo "ISTIO=${ISTIO}" >> ${CONFIG}
+    echo "ISTIO_DOMAIN=${ISTIO_DOMAIN}" >> ${CONFIG}
 
     _command "save ${THIS_NAME}-config"
     cat ${CONFIG}

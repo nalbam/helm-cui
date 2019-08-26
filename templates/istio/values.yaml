@@ -21,7 +21,3 @@ gateways:
   istio-ingressgateway:
     sds:
       enabled: true
-
-certmanager:
-  enabled: true
-  email: me@nalbam.com
