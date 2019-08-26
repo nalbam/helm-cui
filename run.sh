@@ -331,16 +331,6 @@ helm_install() {
 
     # for ingress
     if [ "${INGRESS}" == "true" ]; then
-        CONFIG_SAVE=true
-
-        read_root_domain
-
-        replace_chart ${CHART} "BASE_DOMAIN" "${BASE_DOMAIN:-$CLUSTER_NAME.$ROOT_DOMAIN}"
-
-        if [ "${ANSWER}" != "" ]; then
-            BASE_DOMAIN="${ANSWER}"
-        fi
-
         replace_chart ${CHART} "INGRESS_DOMAIN" "${NAME}-${NAMESPACE}.${BASE_DOMAIN}"
 
         INGRESS_DOMAIN="${ANSWER}"
@@ -611,7 +601,8 @@ helm_install() {
 
     # for nginx-ingress
     if [[ "${NAME}" == "nginx-ingress"* ]]; then
-        # base domain
+        get_base_domain
+
         set_base_domain "${NAME}"
     fi
 
@@ -1161,7 +1152,7 @@ istio_init() {
     ISTIO_TMP=${SHELL_DIR}/build/istio
     mkdir -p ${ISTIO_TMP}
 
-    CHART=${SHELL_DIR}/build/${CLUSTER_NAME}/istio.yaml
+    CHART=${SHELL_DIR}/build/${CLUSTER_NAME}/${NAME}.yaml
     get_template templates/istio/values.yaml ${CHART}
 
     VERSION=$(cat ${CHART} | grep '# chart-version:' | awk '{print $3}')
@@ -1191,7 +1182,7 @@ istio_init() {
 }
 
 istio_secret() {
-    YAML=${SHELL_DIR}/build/${CLUSTER_NAME}/istio-secret.yaml
+    YAML=${SHELL_DIR}/build/${CLUSTER_NAME}/${NAME}-secret.yaml
     get_template templates/istio/secret.yaml ${YAML}
 
     replace_base64 ${YAML} "USERNAME" "admin"
@@ -1202,7 +1193,7 @@ istio_secret() {
 }
 
 istio_show_pod_ips() {
-    LIST=${SHELL_DIR}/build/${CLUSTER_NAME}/istio-pod-list
+    LIST=${SHELL_DIR}/build/${CLUSTER_NAME}/${NAME}-pod-list
 
     kubectl -n istio-system get pod -o json | jq '.items[] | "\(.metadata.name) \(.status.podIP)"' | cut -d'"' -f2 > ${LIST}
 
@@ -1314,8 +1305,8 @@ waiting_istio_init() {
 istio_install() {
     istio_init
 
-    _command "helm upgrade --install istio-init ${ISTIO_DIR}-init --namespace ${NAMESPACE}"
-    helm upgrade --install istio-init ${ISTIO_DIR}-init --namespace ${NAMESPACE}
+    _command "helm upgrade --install ${NAME}-init ${ISTIO_DIR}-init --namespace ${NAMESPACE}"
+    helm upgrade --install ${NAME}-init ${ISTIO_DIR}-init --namespace ${NAMESPACE}
 
     # result will be more than 23
     waiting_istio_init 23
@@ -1325,18 +1316,23 @@ istio_install() {
 
     # CHART=${ISTIO_DIR}/values-istio-demo.yaml
 
-    CHART=${SHELL_DIR}/build/${CLUSTER_NAME}/istio.yaml
+    CHART=${SHELL_DIR}/build/${CLUSTER_NAME}/${NAME}.yaml
     get_template templates/istio/values.yaml ${CHART}
 
     # helm install
     _command "helm upgrade --install ${NAME} ${ISTIO_DIR} --namespace ${NAMESPACE} --values ${CHART}"
     helm upgrade --install ${NAME} ${ISTIO_DIR} --namespace ${NAMESPACE} --values ${CHART}
 
+    # helm history
+    helm_history
+
     # ingress
-    YAML=${SHELL_DIR}/build/${CLUSTER_NAME}/istio-ingress.yaml
+    YAML=${SHELL_DIR}/build/${CLUSTER_NAME}/${NAME}-ingress.yaml
     get_template templates/istio/ingress.yaml ${YAML}
 
-    read_root_domain
+    if [ "${ROOT_DOMAIN}" == "" ]; then
+        read_root_domain
+    fi
 
     replace_chart ${YAML} "ISTIO_DOMAIN" "${ISTIO_DOMAIN:-$CLUSTER_NAME.$ROOT_DOMAIN}"
 
@@ -1354,11 +1350,8 @@ istio_install() {
     # save config (ISTIO)
     config_save
 
-    # helm history
-    helm_history
-
     # base domain
-    set_base_domain "istio-ingressgateway" "istio-"
+    set_base_domain "${NAME}-ingressgateway" "istio-"
 }
 
 istio_remote_install() {
