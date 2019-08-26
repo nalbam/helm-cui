@@ -586,9 +586,6 @@ helm_install() {
         helm upgrade --install ${NAME} ${REPO} --namespace ${NAMESPACE} --values ${CHART} --version ${VERSION} ${EXTRA_VALUES}
     fi
 
-    # config save
-    config_save
-
     # create pdb
     PDB_MIN=$(cat ${CHART} | grep '# chart-pdb:' | awk '{print $3}')
     PDB_MAX=$(cat ${CHART} | grep '# chart-pdb:' | awk '{print $4}')
@@ -605,6 +602,9 @@ helm_install() {
 
         set_base_domain "${NAME}"
     fi
+
+    # config save
+    config_save
 
     # for cert-manager
     if [ "${NAME}" == "cert-manager" ]; then
