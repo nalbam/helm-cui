@@ -164,6 +164,7 @@ istio_menu() {
     echo
     _echo "9. remove"
     echo
+    _echo "g. grafana service open"
     _echo "j. jaeger service open"
     _echo "k. kiali service open"
 
@@ -204,6 +205,10 @@ istio_menu() {
             ;;
         9)
             istio_delete
+            press_enter istio
+            ;;
+        g)
+            istio_service_open "grafana"
             press_enter istio
             ;;
         j)
@@ -1187,11 +1192,21 @@ istio_secret() {
 }
 
 istio_show_pod_ips() {
-    export PILOT_POD_IP=$(kubectl -n istio-system get pod -l istio=pilot -o jsonpath='{.items[0].status.podIP}')
-    export POLICY_POD_IP=$(kubectl -n istio-system get pod -l istio-mixer-type=policy -o jsonpath='{.items[0].status.podIP}')
-    export STATSD_POD_IP=$(kubectl -n istio-system get pod -l istio=statsd-prom-bridge -o jsonpath='{.items[0].status.podIP}')
-    export TELEMETRY_POD_IP=$(kubectl -n istio-system get pod -l istio-mixer-type=telemetry -o jsonpath='{.items[0].status.podIP}')
-    export ZIPKIN_POD_IP=$(kubectl -n istio-system get pod -l app=jaeger -o jsonpath='{range .items[*]}{.status.podIP}{end}')
+    LIST=${SHELL_DIR}/build/${CLUSTER_NAME}/istio-pod-list
+
+    kubectl -n istio-system get pod -o json | jq '.items[] | "\(.metadata.name) \(.status.podIP)"' | cut -d'"' -f2 > ${LIST}
+
+    export PILOT_POD_IP=$(grep istio-pilot ${LIST} | cut -d' ' -f2)
+    export POLICY_POD_IP=$(grep istio-policy ${LIST} | cut -d' ' -f2)
+    export STATSD_POD_IP=$(grep istio-statsd ${LIST} | cut -d' ' -f2)
+    export TELEMETRY_POD_IP=$(grep istio-telemetry ${LIST} | cut -d' ' -f2)
+    export ZIPKIN_POD_IP=$(grep istio-tracing ${LIST} | cut -d' ' -f2)
+
+    # export PILOT_POD_IP=$(kubectl -n istio-system get pod -l istio=pilot -o jsonpath='{.items[0].status.podIP}')
+    # export POLICY_POD_IP=$(kubectl -n istio-system get pod -l istio-mixer-type=policy -o jsonpath='{.items[0].status.podIP}')
+    # export STATSD_POD_IP=$(kubectl -n istio-system get pod -l istio=statsd-prom-bridge -o jsonpath='{.items[0].status.podIP}')
+    # export TELEMETRY_POD_IP=$(kubectl -n istio-system get pod -l istio-mixer-type=telemetry -o jsonpath='{.items[0].status.podIP}')
+    # export ZIPKIN_POD_IP=$(kubectl -n istio-system get pod -l app=jaeger -o jsonpath='{range .items[*]}{.status.podIP}{end}')
 
     echo "export PILOT_POD_IP=$PILOT_POD_IP"
     echo "export POLICY_POD_IP=$POLICY_POD_IP"
@@ -1265,7 +1280,7 @@ EOF
 }
 
 waiting_istio_init() {
-    MAX=${1:-28}
+    MAX=${1:-23}
     SEC=${2:-10}
 
     IDX=0
@@ -1294,8 +1309,10 @@ istio_install() {
     _command "helm upgrade --install istio-init ${ISTIO_DIR}-init --namespace ${NAMESPACE}"
     helm upgrade --install istio-init ${ISTIO_DIR}-init --namespace ${NAMESPACE}
 
-    # result will be more than 28
-    waiting_istio_init 28
+    # result will be more than 23
+    waiting_istio_init 23
+
+    # CHART=${ISTIO_DIR}/values-istio-demo.yaml
 
     CHART=${SHELL_DIR}/build/${CLUSTER_NAME}/istio.yaml
     get_template templates/istio/values.yaml ${CHART}
@@ -1329,6 +1346,9 @@ istio_install() {
 
     # helm history
     helm_history
+
+    # elb domain
+    get_elb_domain "ingressgateway"
 }
 
 istio_remote_install() {

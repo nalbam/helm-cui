@@ -21,3 +21,6 @@ gateways:
   istio-ingressgateway:
     sds:
       enabled: true
+
+  # istio-egressgateway:
+  #   enabled: true
