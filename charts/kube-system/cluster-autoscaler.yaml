@@ -5,6 +5,7 @@
 nameOverride: cluster-autoscaler
 
 awsRegion: AWS_REGION
+
 #:AWS:awsAccessKeyID: "AWS_ACCESS_KEY"
 #:AWS:awsSecretAccessKey: "AWS_SECRET_KEY"
 
