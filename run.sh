@@ -1314,10 +1314,8 @@ istio_install() {
     # istio secret
     istio_secret
 
-    # CHART=${ISTIO_DIR}/values-istio-demo.yaml
-
     CHART=${SHELL_DIR}/build/${CLUSTER_NAME}/${NAME}.yaml
-    get_template templates/istio/values.yaml ${CHART}
+    get_template templates/istio/values-istio-demo.yaml ${CHART}
 
     # helm install
     _command "helm upgrade --install ${NAME} ${ISTIO_DIR} --namespace ${NAMESPACE} --values ${CHART}"
