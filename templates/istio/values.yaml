@@ -10,15 +10,11 @@ global:
 gateways:
   istio-ingressgateway:
     enabled: true
-    # sds:
-    #   enabled: true
+    sds:
+      enabled: true
 
   istio-egressgateway:
     enabled: true
-
-# certmanager:
-#   enabled: true
-#   email: me@nalbam.com
 
 grafana:
   enabled: true
