@@ -6,8 +6,8 @@ nameOverride: cluster-autoscaler
 
 awsRegion: AWS_REGION
 
-#:AWS:awsAccessKeyID: "AWS_ACCESS_KEY"
-#:AWS:awsSecretAccessKey: "AWS_SECRET_KEY"
+#:AWS:awsAccessKeyID: AWS_ACCESS_KEY
+#:AWS:awsSecretAccessKey: AWS_SECRET_KEY
 
 autoDiscovery:
   enabled: true
@@ -23,9 +23,8 @@ extraArgs:
   skip-nodes-with-local-storage: false
   skip-nodes-with-system-pods: false
 
-# podAnnotations:
-#   iam.amazonaws.com/role: AWS_ROLE_ARN
-#   cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+#:ROLE:podAnnotations:
+#:ROLE:  iam.amazonaws.com/role: AWS_ROLE_ARN
 
 #:MASTER:nodeSelector:
 #:MASTER:  kubernetes.io/role: master

@@ -370,6 +370,17 @@ helm_install() {
         fi
     fi
 
+    # for kube2iam
+    if [ "${NAME}" == "kube2iam" ]; then
+        replace_chart ${CHART} "AWS_ACCESS_KEY"
+
+        if [ "${ANSWER}" != "" ]; then
+            _replace "s/#:AWS://g" ${CHART}
+
+            replace_password ${CHART} "AWS_SECRET_KEY" "****"
+        fi
+    fi
+
     # for cluster-autoscaler
     if [ "${NAME}" == "cluster-autoscaler" ]; then
         # replace_chart ${CHART} "AWS_ACCESS_KEY"
@@ -379,6 +390,19 @@ helm_install() {
 
         #     replace_password ${CHART} "AWS_SECRET_KEY" "****"
         # fi
+
+        COUNT=$(kubectl get pods -n kube-system | grep kube2iam | wc -l | xargs)
+        if [ "x${COUNT}" != "x0" ]; then
+            ACCOUNT=$(aws sts get-caller-identity | grep "Account" | cut -d'"' -f4)
+
+            ROLE_ARN="arn:aws:iam::${ACCOUNT}:policy/${CLUSTER_NAME}-autoscaling"
+
+            replace_chart ${CHART} "AWS_ROLE_ARN" "${ROLE_ARN}"
+
+            if [ "${ANSWER}" != "" ]; then
+                _replace "s/#:ROLE://g" ${CHART}
+            fi
+        fi
 
         get_cluster_ip ${NAMESPACE} ${NAME}
 

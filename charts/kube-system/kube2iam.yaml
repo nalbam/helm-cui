@@ -3,10 +3,18 @@
 
 nameOverride: kube2iam
 
-extraArgs:
-  base-role-arn: BASE_ROLE_ARN
-  default-role: kube2iam-default
+aws:
+  region: AWS_REGION
+#:AWS:  access_key: AWS_ACCESS_KEY
+#:AWS:  secret_key: AWS_SECRET_KEY
+
+# extraArgs:
+#   base-role-arn: BASE_ROLE_ARN
+#   default-role: DEFAULT_ROLE
 
 # host:
 #   iptables: true
 #   interface: cbr0
+
+rbac:
+  create: true
