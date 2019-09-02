@@ -370,16 +370,16 @@ helm_install() {
         fi
     fi
 
-    # for kube2iam
-    if [ "${NAME}" == "kube2iam" ]; then
-        replace_chart ${CHART} "AWS_ACCESS_KEY"
+    # # for kube2iam
+    # if [ "${NAME}" == "kube2iam" ]; then
+    #     replace_chart ${CHART} "AWS_ACCESS_KEY"
 
-        if [ "${ANSWER}" != "" ]; then
-            _replace "s/#:AWS://g" ${CHART}
+    #     if [ "${ANSWER}" != "" ]; then
+    #         _replace "s/#:AWS://g" ${CHART}
 
-            replace_password ${CHART} "AWS_SECRET_KEY" "****"
-        fi
-    fi
+    #         replace_password ${CHART} "AWS_SECRET_KEY" "****"
+    #     fi
+    # fi
 
     # for cluster-autoscaler
     if [ "${NAME}" == "cluster-autoscaler" ]; then

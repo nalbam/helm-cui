@@ -8,13 +8,15 @@ aws:
 #:AWS:  access_key: AWS_ACCESS_KEY
 #:AWS:  secret_key: AWS_SECRET_KEY
 
-# extraArgs:
-#   base-role-arn: BASE_ROLE_ARN
-#   default-role: DEFAULT_ROLE
+extraArgs:
+  auto-discover-base-arn:
+  auto-discover-default-role: true
+  # base-role-arn: BASE_ROLE_ARN
+  # default-role: DEFAULT_ROLE
 
-# host:
-#   iptables: true
-#   interface: cbr0
+host:
+  iptables: true
+  interface: eni+
 
 rbac:
   create: true
