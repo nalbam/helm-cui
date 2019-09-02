@@ -395,7 +395,7 @@ helm_install() {
         if [ "x${COUNT}" != "x0" ]; then
             ACCOUNT=$(aws sts get-caller-identity | grep "Account" | cut -d'"' -f4)
 
-            ROLE_ARN="arn:aws:iam::${ACCOUNT}:policy/${CLUSTER_NAME}-autoscaling"
+            ROLE_ARN="arn:aws:iam::${ACCOUNT}:role/${CLUSTER_NAME}-autoscaling"
 
             replace_chart ${CHART} "AWS_ROLE_ARN" "${ROLE_ARN}"
 
