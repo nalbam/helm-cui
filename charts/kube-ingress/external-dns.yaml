@@ -3,20 +3,12 @@
 
 nameOverride: external-dns
 
-# podAnnotations:
-#   cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
-
 sources:
   - service
   - ingress
 
-# podAnnotations:
-#   iam.amazonaws.com/role: AWS_ROLE_ARN
-
-#:AWS:aws:
-#:AWS:  credentials:
-#:AWS:    accessKey: AWS_ACCESS_KEY
-#:AWS:    secretKey: AWS_SECRET_KEY
+#:ROLE:podAnnotations:
+#:ROLE:  iam.amazonaws.com/role: AWS_ROLE_ARN
 
 rbac:
   create: true

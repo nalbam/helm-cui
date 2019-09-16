@@ -361,12 +361,17 @@ helm_install() {
 
     # for external-dns
     if [ "${NAME}" == "external-dns" ]; then
-        replace_chart ${CHART} "AWS_ACCESS_KEY"
+        COUNT=$(kubectl get pods -n kube-system | grep kube2iam | wc -l | xargs)
+        if [ "x${COUNT}" != "x0" ]; then
+            ACCOUNT=$(aws sts get-caller-identity | grep "Account" | cut -d'"' -f4)
 
-        if [ "${ANSWER}" != "" ]; then
-            _replace "s/#:AWS://g" ${CHART}
+            ROLE_ARN="arn:aws:iam::${ACCOUNT}:role/${CLUSTER_NAME}-route53"
 
-            replace_password ${CHART} "AWS_SECRET_KEY" "****"
+            replace_chart ${CHART} "AWS_ROLE_ARN" "${ROLE_ARN}"
+
+            if [ "${ANSWER}" != "" ]; then
+                _replace "s/#:ROLE://g" ${CHART}
+            fi
         fi
     fi
 
@@ -383,14 +388,6 @@ helm_install() {
 
     # for cluster-autoscaler
     if [ "${NAME}" == "cluster-autoscaler" ]; then
-        # replace_chart ${CHART} "AWS_ACCESS_KEY"
-
-        # if [ "${ANSWER}" != "" ]; then
-        #     _replace "s/#:AWS://g" ${CHART}
-
-        #     replace_password ${CHART} "AWS_SECRET_KEY" "****"
-        # fi
-
         COUNT=$(kubectl get pods -n kube-system | grep kube2iam | wc -l | xargs)
         if [ "x${COUNT}" != "x0" ]; then
             ACCOUNT=$(aws sts get-caller-identity | grep "Account" | cut -d'"' -f4)
