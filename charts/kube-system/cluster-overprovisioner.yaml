@@ -1,0 +1,4 @@
+# chart-repo: stable/cluster-overprovisioner
+# chart-version: latest
+
+nameOverride: cluster-overprovisioner
