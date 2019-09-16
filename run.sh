@@ -352,7 +352,7 @@ helm_install() {
         # https://github.com/helm/charts/blob/master/stable/cert-manager/README.md
         _command "kubectl apply -f 00-crds.yaml"
         kubectl apply \
-            -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.6/deploy/manifests/00-crds.yaml
+            -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.10/deploy/manifests/00-crds.yaml
 
         # Label the cert-manager namespace to disable resource validation
         _command "kubectl label namespace ${NAMESPACE} certmanager.k8s.io/disable-validation=true"
@@ -629,6 +629,8 @@ helm_install() {
 
     # for cert-manager
     if [ "${NAME}" == "cert-manager" ]; then
+        waiting_pod "${NAMESPACE}" "${NAME}-webhook"
+
         _command "kubectl apply -f cluster-issuer.yaml"
         kubectl apply -f ${SHELL_DIR}/templates/cluster-issuer.yaml
     fi
@@ -677,7 +679,7 @@ helm_history() {
     helm history ${NAME}
 
     _command "kubectl get deploy,pod,svc,ing,pvc,pv -n ${NAMESPACE}"
-    kubectl get deploy,pod,svc,ing,pvc,pv -n ${NAMESPACE}
+    kubectl get deploy,pod,svc,ing,pvc,pv -n ${NAMESPACE} | grep ${NAME}
 }
 
 helm_delete() {
@@ -773,6 +775,8 @@ helm_repo() {
             _REPO="https://storage.googleapis.com/kubernetes-charts-incubator"
         elif [ "${_NAME}" == "argo" ]; then
             _REPO="https://argoproj.github.io/argo-helm"
+        elif [ "${_NAME}" == "jetstack" ]; then
+            _REPO="https://charts.jetstack.io"
         elif [ "${_NAME}" == "monocular" ]; then
             _REPO="https://helm.github.io/monocular"
         fi
