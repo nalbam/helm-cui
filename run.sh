@@ -644,7 +644,6 @@ helm_install() {
     # for jenkins
     if [ "${NAME}" == "jenkins" ]; then
         create_cluster_role_binding admin ${NAMESPACE} default
-        create_cluster_role_binding admin ${NAMESPACE} jenkins
     fi
 
     # for kubernetes-dashboard
