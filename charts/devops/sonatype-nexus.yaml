@@ -9,7 +9,8 @@ statefulset:
   enabled: true
 
 nexus:
-  serviceType: SERVICE_TYPE
+  service:
+    type: SERVICE_TYPE
   resources:
     requests:
       cpu: 500m
