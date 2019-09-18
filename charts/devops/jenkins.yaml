@@ -53,7 +53,7 @@ master:
     # https://plugins.jenkins.io/google-login
     - google-login:latest
   prometheus:
-    enabled: true
+    enabled: false
   # -- jenkins-jobs -- start -- see: jenkins/jobs.sh #
   # -- jenkins-jobs -- end -- #
 
