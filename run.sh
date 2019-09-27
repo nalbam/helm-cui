@@ -778,6 +778,8 @@ helm_repo() {
             _REPO="https://charts.jetstack.io"
         elif [ "${_NAME}" == "monocular" ]; then
             _REPO="https://helm.github.io/monocular"
+        elif [ "${_NAME}" == "gitlab" ]; then
+            _REPO="https://charts.gitlab.io"
         fi
     fi
 
