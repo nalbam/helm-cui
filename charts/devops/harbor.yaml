@@ -1,11 +1,11 @@
 # chart-repo: harbor/harbor
 # chart-version: latest
 # chart-ingress: true
-# chart-pvc: harbor-registry ReadWriteOnce 5Gi
-# chart-pvc: harbor-chartmuseum ReadWriteOnce 5Gi
-# chart-pvc: harbor-jobservice ReadWriteOnce 1Gi
-# chart-pvc: harbor-database ReadWriteOnce 1Gi
-# chart-pvc: harbor-redis ReadWriteOnce 1Gi
+#- chart-pvc: harbor-registry ReadWriteOnce 5Gi
+#- chart-pvc: harbor-chartmuseum ReadWriteOnce 5Gi
+#- chart-pvc: harbor-jobservice ReadWriteOnce 1Gi
+#- chart-pvc: harbor-database ReadWriteOnce 1Gi
+#- chart-pvc: harbor-redis ReadWriteOnce 1Gi
 
 expose:
   type: ingress
@@ -31,9 +31,22 @@ harborAdminPassword: "PASSWORD"
 #:ROLE:    iam.amazonaws.com/role: AWS_ROLE_ARN
 
 database:
-  type: internal
-  internal:
+  type: external
+  # internal:
+  #   password: "PASSWORD"
+  external:
+    host: "harbor-database"
+    port: "5432"
+    username: "postgres"
     password: "PASSWORD"
+    coreDatabase: "harbor"
+    clairDatabase: "harbor"
+
+redis:
+  type: internal
+  external:
+    host: "harbor-redis"
+    port: "6379"
 
 persistence:
   enabled: true
@@ -42,27 +55,27 @@ persistence:
       accessMode: ReadWriteOnce
       size: 5Gi
       #:EFS:storageClass: "efs"
-      existingClaim: harbor-registry
+      # existingClaim: harbor-registry
     chartmuseum:
       accessMode: ReadWriteOnce
       size: 5Gi
       #:EFS:storageClass: "efs"
-      existingClaim: harbor-chartmuseum
+      # existingClaim: harbor-chartmuseum
     jobservice:
       accessMode: ReadWriteOnce
       size: 1Gi
       #:EFS:storageClass: "efs"
-      existingClaim: harbor-jobservice
+      # existingClaim: harbor-jobservice
     database:
       accessMode: ReadWriteOnce
       size: 1Gi
       #:EFS:storageClass: "efs"
-      existingClaim: harbor-database
+      # existingClaim: harbor-database
     redis:
       accessMode: ReadWriteOnce
       size: 1Gi
       #:EFS:storageClass: "efs"
-      existingClaim: harbor-redis
+      # existingClaim: harbor-redis
 
 #:S3:  imageChartStorage:
 #:S3:    type: s3

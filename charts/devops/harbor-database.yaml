@@ -1,0 +1,17 @@
+# chart-repo: stable/postgresql
+# chart-version: latest
+#- chart-pvc: harbor-database-external ReadWriteOnce 2Gi
+
+fullnameOverride: harbor-database
+
+postgresqlUsername: postgres
+postgresqlPassword: PASSWORD
+postgresqlDatabase: harbor
+
+persistence:
+  enabled: true
+  accessModes:
+    - ReadWriteOnce
+  size: 2Gi
+  #:EFS:storageClass: "efs"
+  # existingClaim: harbor-database-external

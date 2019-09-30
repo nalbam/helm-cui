@@ -1,0 +1,18 @@
+# chart-repo: stable/redis
+# chart-version: latest
+#- chart-pvc: harbor-redis-external ReadWriteOnce 2Gi
+
+fullnameOverride: harbor-redis
+
+cluster:
+  enabled: false
+
+usePassword: false
+
+persistence:
+  enabled: true
+  accessModes:
+    - ReadWriteOnce
+  size: 2Gi
+  #:EFS:storageClass: "efs"
+  # existingClaim: harbor-redis-external

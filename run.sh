@@ -466,6 +466,12 @@ helm_install() {
         fi
     fi
 
+    # for harbor-database
+    if [ "${NAME}" == "harbor-database" ]; then
+        # admin password
+        replace_password ${CHART}
+    fi
+
     # for sonatype-nexus
     if [ "${NAME}" == "sonatype-nexus" ]; then
         # admin password
