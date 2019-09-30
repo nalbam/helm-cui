@@ -433,7 +433,7 @@ helm_install() {
 
     # for argo
     if [ "${NAME}" == "argo" ]; then
-        replace_chart ${CHART} "ARTIFACT_REPOSITORY" "${CLUSTER_NAME}-argo"
+        replace_chart ${CHART} "AWS_BUCKET" "${CLUSTER_NAME}-argo"
     fi
 
     # for argocd
@@ -463,6 +463,31 @@ helm_install() {
 
         # jenkins jobs
         ${SHELL_DIR}/templates/jenkins/jobs.sh ${CHART}
+    fi
+
+    # for harbor
+    if [ "${NAME}" == "harbor" ]; then
+        # admin password
+        replace_password ${CHART}
+
+        # COUNT=$(kubectl get pods -n kube-system | grep kube2iam | wc -l | xargs)
+        # if [ "x${COUNT}" != "x0" ]; then
+        #     ACCOUNT=$(aws sts get-caller-identity | grep "Account" | cut -d'"' -f4)
+
+        #     ROLE_ARN="arn:aws:iam::${ACCOUNT}:role/${CLUSTER_NAME}-harbor"
+
+        #     replace_chart ${CHART} "AWS_ROLE_ARN" "${ROLE_ARN}"
+
+        #     if [ "${ANSWER}" != "" ]; then
+        #         _replace "s/#:ROLE://g" ${CHART}
+        #     fi
+        # fi
+
+        replace_chart ${CHART} "AWS_BUCKET" "${CLUSTER_NAME}-harbor"
+
+        if [ "${ANSWER}" != "" ]; then
+            _replace "s/#:S3://g" ${CHART}
+        fi
     fi
 
     # for sonatype-nexus
@@ -776,6 +801,8 @@ helm_repo() {
             _REPO="https://argoproj.github.io/argo-helm"
         elif [ "${_NAME}" == "jetstack" ]; then
             _REPO="https://charts.jetstack.io"
+        elif [ "${_NAME}" == "harbor" ]; then
+            _REPO="https://helm.goharbor.io"
         elif [ "${_NAME}" == "monocular" ]; then
             _REPO="https://helm.github.io/monocular"
         elif [ "${_NAME}" == "gitlab" ]; then

@@ -1,0 +1,66 @@
+# chart-repo: harbor/harbor
+# chart-version: latest
+# chart-ingress: true
+# chart-pvc: harbor-registry ReadWriteOnce 5Gi
+# chart-pvc: harbor-chartmuseum ReadWriteOnce 5Gi
+# chart-pvc: harbor-jobservice ReadWriteOnce 1Gi
+# chart-pvc: harbor-database ReadWriteOnce 1Gi
+# chart-pvc: harbor-redis ReadWriteOnce 1Gi
+
+expose:
+  type: ingress
+  tls:
+    enabled: true
+    secretName: "core-harbor-tls"
+    notarySecretName: "notary-harbor-tls"
+  ingress:
+    hosts:
+      core: core-INGRESS_DOMAIN
+      notary: notary-INGRESS_DOMAIN
+    annotations:
+      certmanager.k8s.io/cluster-issuer: "letsencrypt-prod"
+      external-dns.alpha.kubernetes.io/hostname: "core-INGRESS_DOMAIN."
+      external-dns.alpha.kubernetes.io/hostname: "notary-INGRESS_DOMAIN."
+
+externalURL: https://core-INGRESS_DOMAIN
+
+harborAdminPassword: "PASSWORD"
+
+#:ROLE:core:
+#:ROLE:  podAnnotations:
+#:ROLE:    iam.amazonaws.com/role: AWS_ROLE_ARN
+
+#:S3:  imageChartStorage:
+#:S3:    type: s3
+#:S3:    s3:
+#:S3:      region: AWS_REGION
+#:S3:      bucket: AWS_BUCKET
+
+persistence:
+  enabled: true
+  persistentVolumeClaim:
+    registry:
+      accessMode: ReadWriteOnce
+      size: 5Gi
+      #:EFS:storageClass: "efs"
+      existingClaim: harbor-registry
+    chartmuseum:
+      accessMode: ReadWriteOnce
+      size: 5Gi
+      #:EFS:storageClass: "efs"
+      existingClaim: harbor-chartmuseum
+    jobservice:
+      accessMode: ReadWriteOnce
+      size: 1Gi
+      #:EFS:storageClass: "efs"
+      existingClaim: harbor-jobservice
+    database:
+      accessMode: ReadWriteOnce
+      size: 1Gi
+      #:EFS:storageClass: "efs"
+      existingClaim: harbor-database
+    redis:
+      accessMode: ReadWriteOnce
+      size: 1Gi
+      #:EFS:storageClass: "efs"
+      existingClaim: harbor-redis
