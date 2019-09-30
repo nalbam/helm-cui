@@ -31,9 +31,9 @@ harborAdminPassword: "PASSWORD"
 #:ROLE:    iam.amazonaws.com/role: AWS_ROLE_ARN
 
 database:
-  type: external
-  # internal:
-  #   password: "PASSWORD"
+  type: internal
+  internal:
+    password: "PASSWORD"
   external:
     host: "harbor-database"
     port: "5432"
