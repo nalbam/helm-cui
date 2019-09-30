@@ -375,17 +375,6 @@ helm_install() {
         fi
     fi
 
-    # # for kube2iam
-    # if [ "${NAME}" == "kube2iam" ]; then
-    #     replace_chart ${CHART} "AWS_ACCESS_KEY"
-
-    #     if [ "${ANSWER}" != "" ]; then
-    #         _replace "s/#:AWS://g" ${CHART}
-
-    #         replace_password ${CHART} "AWS_SECRET_KEY" "****"
-    #     fi
-    # fi
-
     # for cluster-autoscaler
     if [ "${NAME}" == "cluster-autoscaler" ]; then
         COUNT=$(kubectl get pods -n kube-system | grep kube2iam | wc -l | xargs)
@@ -469,19 +458,6 @@ helm_install() {
     if [ "${NAME}" == "harbor" ]; then
         # admin password
         replace_password ${CHART}
-
-        # COUNT=$(kubectl get pods -n kube-system | grep kube2iam | wc -l | xargs)
-        # if [ "x${COUNT}" != "x0" ]; then
-        #     ACCOUNT=$(aws sts get-caller-identity | grep "Account" | cut -d'"' -f4)
-
-        #     ROLE_ARN="arn:aws:iam::${ACCOUNT}:role/${CLUSTER_NAME}-harbor"
-
-        #     replace_chart ${CHART} "AWS_ROLE_ARN" "${ROLE_ARN}"
-
-        #     if [ "${ANSWER}" != "" ]; then
-        #         _replace "s/#:ROLE://g" ${CHART}
-        #     fi
-        # fi
 
         replace_chart ${CHART} "AWS_BUCKET" "${CLUSTER_NAME}-harbor"
 

@@ -7,8 +7,6 @@
 # chart-pvc: harbor-database ReadWriteOnce 1Gi
 # chart-pvc: harbor-redis ReadWriteOnce 1Gi
 
-# fullnameOverride: harbor
-
 expose:
   type: ingress
   tls:
@@ -31,6 +29,11 @@ harborAdminPassword: "PASSWORD"
 #:ROLE:core:
 #:ROLE:  podAnnotations:
 #:ROLE:    iam.amazonaws.com/role: AWS_ROLE_ARN
+
+database:
+  type: internal
+  internal:
+    password: "PASSWORD"
 
 persistence:
   enabled: true
