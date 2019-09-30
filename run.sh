@@ -299,7 +299,7 @@ helm_install() {
     fi
 
     # latest chart version
-    LATEST=$(helm search ${NAME} | grep ${REPO} | head -1 | awk '{print $2}')
+    LATEST=$(helm search "${NAME}" | grep "${REPO} " | head -1 | awk '{print $2}')
 
     if [ "${LATEST}" != "" ]; then
         _result "latest chart version: ${LATEST}"
