@@ -87,16 +87,16 @@ main_menu() {
 
     print_list
 
-    echo
-    _echo "i. istio.."
+    # echo
+    # _echo "i. istio.."
     echo
     _echo "d. remove"
     # echo
     # _echo "v. check PV"
     # _echo "s. save variables"
-    # echo
-    # _echo "u. update self"
-    # _echo "t. update tools"
+    echo
+    _echo "u. update self"
+    _echo "t. update tools"
     echo
     _echo "x. Exit"
 
@@ -678,8 +678,8 @@ helm_install() {
 }
 
 helm_history() {
-    # waiting 2
-    waiting_pod "${NAMESPACE}" "${NAME}"
+    # waiting
+    waiting_pod "${NAMESPACE}" "${NAME}" 2
 
     _command "helm history ${NAME}"
     helm history ${NAME}
@@ -763,7 +763,7 @@ helm_init() {
     # default pdb
     default_pdb "${NAMESPACE}"
 
-    # waiting 5
+    # waiting
     waiting_pod "${NAMESPACE}" "tiller"
 
     _command "kubectl get pod,svc -n ${NAMESPACE}"
@@ -1325,15 +1325,15 @@ waiting_istio_init() {
         printf "${RET} "
 
         if [ ${RET} -ge ${MAX} ]; then
-            echo "istio_init ok"
+            _result "istio_init ok"
             break
         elif [ "x${IDX}" == "x${SEC}" ]; then
-            _result "Timeout"
+            # _result "Timeout"
             break
         fi
 
         IDX=$(( ${IDX} + 1 ))
-        sleep 2
+        sleep 1
     done
 }
 
@@ -1938,12 +1938,12 @@ waiting_deploy() {
         if [ "x${CURRENT}" != "x0" ]; then
             break
         elif [ "x${IDX}" == "x${SEC}" ]; then
-            _result "Timeout"
+            # _result "Timeout"
             break
         fi
 
         IDX=$(( ${IDX} + 1 ))
-        sleep 2
+        sleep 1
     done
 }
 
@@ -1974,12 +1974,12 @@ waiting_pod() {
             _result "${STATUS}"
             break
         elif [ "x${IDX}" == "x${SEC}" ]; then
-            _result "Timeout"
+            # _result "Timeout"
             break
         fi
 
         IDX=$(( ${IDX} + 1 ))
-        sleep 2
+        sleep 1
     done
 }
 
