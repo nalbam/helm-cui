@@ -13,10 +13,10 @@ nexus:
     type: SERVICE_TYPE
   resources:
     requests:
-      cpu: 500m
-      memory: 4Gi
-    limits:
       cpu: 1000m
+      memory: 3Gi
+    limits:
+      cpu: 2000m
       memory: 4Gi
   # podAnnotations:
   #   cluster-autoscaler.kubernetes.io/safe-to-evict: "true"

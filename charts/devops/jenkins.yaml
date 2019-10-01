@@ -10,7 +10,7 @@ master:
   adminPassword: PASSWORD
   resources:
     requests:
-      cpu: 500m
+      cpu: 1000m
       memory: 3Gi
     limits:
       cpu: 2000m
