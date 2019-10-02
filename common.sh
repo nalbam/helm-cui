@@ -281,7 +281,7 @@ config_save() {
 
 variables_domain() {
     __KEY=${1}
-    __VAL=$(kubectl get ing --all-namespaces | grep devops | grep ${__KEY} | awk '{print $3}')
+    __VAL=$(kubectl get ing --all-namespaces | grep devops | grep ${__KEY} | awk '{print $3}' | cut -d',' -f1)
 
     echo "@Field" >> ${CONFIG}
     echo "def ${__KEY} = \"${__VAL}\"" >> ${CONFIG}
@@ -308,16 +308,20 @@ variables_save() {
         echo "def cluster = \"devops\"" >> ${CONFIG}
 
         variables_domain "chartmuseum"
-        variables_domain "registry"
+        variables_domain "harbor"
         variables_domain "jenkins"
-        variables_domain "sonarqube"
         variables_domain "nexus"
+        variables_domain "registry"
+        variables_domain "sonarqube"
     fi
 
     echo "@Field" >> ${CONFIG}
     echo "def slack_token = \"\"" >> ${CONFIG}
 
     echo "return this" >> ${CONFIG}
+
+    echo
+    cat ${CONFIG}
 
     ENCODED=${SHELL_DIR}/build/${CLUSTER_NAME}/variables.txt
 
