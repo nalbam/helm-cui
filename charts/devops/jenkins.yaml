@@ -32,6 +32,7 @@ master:
       nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
       certmanager.k8s.io/cluster-issuer: "letsencrypt-prod"
       external-dns.alpha.kubernetes.io/hostname: "INGRESS_DOMAIN."
+  overwritePlugins: true
   installPlugins:
     # https://github.com/helm/charts/blob/master/stable/jenkins/values.yaml
     - kubernetes:latest
@@ -54,6 +55,7 @@ master:
     - google-login:latest
   prometheus:
     enabled: false
+  overwriteJobs: true
   # -- jenkins-jobs -- start -- see: jenkins/jobs.sh #
   # -- jenkins-jobs -- end -- #
 
