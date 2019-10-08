@@ -287,17 +287,65 @@ variables_domain() {
     echo "def ${__KEY} = \"${__VAL}\"" >> ${CONFIG}
 }
 
-variables_save() {
+variables_show() {
+    COUNT=$(kubectl get secret -n default | grep groovy-variables | wc -l | xargs)
+    if [ "x${COUNT}" == "x0" ]; then
+        _result "No have groovy-variables."
+        return
+    fi
+
+    CONFIG=${SHELL_DIR}/build/${CLUSTER_NAME}/variables.groovy
+
+    _command "kubectl get secret groovy-variables -n default"
+    kubectl get secret groovy-variables -n default -o json | jq -r .data.groovy | base64 --decode > ${CONFIG}
+
+    echo
+    cat ${CONFIG} | grep "def "
+}
+
+variables_edit() {
+    COUNT=$(kubectl get secret -n default | grep groovy-variables | wc -l | xargs)
+    if [ "x${COUNT}" == "x0" ]; then
+        _result "No have groovy-variables."
+        return
+    fi
+
+    CONFIG=${SHELL_DIR}/build/${CLUSTER_NAME}/variables.groovy
+
+    _command "kubectl get secret groovy-variables -n default"
+    kubectl get secret groovy-variables -n default -o json | jq -r .data.groovy | base64 --decode > ${CONFIG}
+
+    LIST=${SHELL_DIR}/build/${CLUSTER_NAME}/variables-list
+
+    cat ${CONFIG} | grep 'def ' | cut -d' ' -f2 > ${LIST}
+
+    # select
+    select_one
+
+    if [ "${SELECTED}" == "" ]; then
+        return
+    fi
+
+    DEFAULT="$(cat ${CONFIG} | grep 'def ' | grep ${SELECTED} | cut -d'"' -f2)"
+
+    question "${SELECTED} = [${DEFAULT}] : "
+    if [ "${ANSWER}" == "" ]; then
+        ANSWER=${DEFAULT}
+    fi
+
+    _replace "s/def ${SELECTED} = .*/def ${SELECTED} = \"${ANSWER}\"/" ${CONFIG}
+
+    echo
+    cat ${CONFIG} | grep "def "
+
+    variables_save
+}
+
+variables_auto() {
     CONFIG=${SHELL_DIR}/build/${CLUSTER_NAME}/variables.groovy
 
     echo "#!/usr/bin/groovy" > ${CONFIG}
     echo "import groovy.transform.Field" >> ${CONFIG}
-
-    echo "@Field" >> ${CONFIG}
-    echo "def root_domain = \"${ROOT_DOMAIN}\"" >> ${CONFIG}
-
-    echo "@Field" >> ${CONFIG}
-    echo "def base_domain = \"${BASE_DOMAIN}\"" >> ${CONFIG}
 
     COUNT=$(kubectl get ing --all-namespaces | grep devops | wc -l | xargs)
     if [ "x${COUNT}" == "x0" ]; then
@@ -306,7 +354,15 @@ variables_save() {
     else
         echo "@Field" >> ${CONFIG}
         echo "def cluster = \"devops\"" >> ${CONFIG}
+    fi
 
+    echo "@Field" >> ${CONFIG}
+    echo "def root_domain = \"${ROOT_DOMAIN}\"" >> ${CONFIG}
+
+    echo "@Field" >> ${CONFIG}
+    echo "def base_domain = \"${BASE_DOMAIN}\"" >> ${CONFIG}
+
+    if [ "x${COUNT}" != "x0" ]; then
         variables_domain "chartmuseum"
         variables_domain "harbor"
         variables_domain "jenkins"
@@ -321,8 +377,12 @@ variables_save() {
     echo "return this" >> ${CONFIG}
 
     echo
-    cat ${CONFIG}
+    cat ${CONFIG} | grep "def "
 
+    variables_save
+}
+
+variables_save() {
     ENCODED=${SHELL_DIR}/build/${CLUSTER_NAME}/variables.txt
 
     if [ "${OS_NAME}" == "darwin" ]; then

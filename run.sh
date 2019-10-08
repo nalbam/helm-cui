@@ -65,6 +65,9 @@ press_enter() {
         main)
             main_menu
             ;;
+        config)
+            config_menu
+            ;;
         istio)
             istio_menu
             ;;
@@ -87,13 +90,13 @@ main_menu() {
 
     print_list
 
-    # echo
-    # _echo "i. istio.."
+    echo
+    _echo "c. config.."
+    _echo "i. istio.."
     echo
     _echo "d. remove"
     # echo
     # _echo "v. check PV"
-    # _echo "s. save variables"
     echo
     _echo "u. update self"
     _echo "t. update tools"
@@ -107,6 +110,9 @@ main_menu() {
             helm_init
             press_enter main
             ;;
+        c)
+            config_menu
+            ;;
         i)
             istio_menu
             ;;
@@ -116,10 +122,6 @@ main_menu() {
             ;;
         v)
             validate_pv
-            press_enter main
-            ;;
-        s)
-            variables_save
             press_enter main
             ;;
         u)
@@ -147,11 +149,51 @@ main_menu() {
     esac
 }
 
+config_menu() {
+    title
+
+    echo
+    _echo "1. config load"
+    _echo "2. config save"
+    echo
+    _echo "3. variables show"
+    _echo "4. variables auto"
+    _echo "5. variables edit"
+
+    question
+
+    case ${ANSWER} in
+        1)
+            config_load
+            press_enter config
+            ;;
+        2)
+            config_save
+            press_enter config
+            ;;
+        3)
+            variables_show
+            press_enter config
+            ;;
+        4)
+            variables_auto
+            press_enter config
+            ;;
+        5)
+            variables_edit
+            press_enter config
+            ;;
+        *)
+            main_menu
+            ;;
+    esac
+}
+
 istio_menu() {
     title
 
     echo
-    _echo "1. install"
+    _echo "1. install istio"
     _echo "2. install istio-remote"
     echo
     _echo "3. injection show"
