@@ -156,7 +156,7 @@ config_menu() {
     _echo "1. config load"
     _echo "2. config save"
     echo
-    _echo "3. variables show"
+    _echo "3. variables load"
     _echo "4. variables auto"
     _echo "5. variables edit"
 
@@ -172,7 +172,7 @@ config_menu() {
             press_enter config
             ;;
         3)
-            variables_show
+            variables_load
             press_enter config
             ;;
         4)

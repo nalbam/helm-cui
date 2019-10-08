@@ -287,7 +287,7 @@ variables_domain() {
     echo "def ${__KEY} = \"${__VAL}\"" >> ${CONFIG}
 }
 
-variables_show() {
+variables_load() {
     COUNT=$(kubectl get secret -n default | grep groovy-variables | wc -l | xargs)
     if [ "x${COUNT}" == "x0" ]; then
         _result "No have groovy-variables."
