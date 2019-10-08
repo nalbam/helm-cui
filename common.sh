@@ -149,27 +149,11 @@ waiting() {
     echo
 }
 
-# get_az_list() {
-#     if [ -z ${AZ_LIST} ]; then
-#         AZ_LIST="$(aws ec2 describe-availability-zones | jq -r '.AvailabilityZones[].ZoneName' | head -3 | tr -s '\r\n' ',' | sed 's/.$//')"
-#     fi
-# }
-
-# get_master_zones() {
-#     if [ "${master_count}" == "1" ]; then
-#         master_zones=$(echo "${AZ_LIST}" | cut -d',' -f1)
-#     else
-#         master_zones="${AZ_LIST}"
-#     fi
-# }
-
-# get_node_zones() {
-#     if [ "${node_count}" == "1" ]; then
-#         zones=$(echo "${AZ_LIST}" | cut -d',' -f1)
-#     else
-#         zones="${AZ_LIST}"
-#     fi
-# }
+get_az_list() {
+    if [ -z ${AZ_LIST} ]; then
+        AZ_LIST="$(aws ec2 describe-availability-zones | jq -r '.AvailabilityZones[].ZoneName' | head -3 | tr -s '\r\n' ',' | sed 's/.$//')"
+    fi
+}
 
 get_template() {
     __FROM=${SHELL_DIR}/${1}
@@ -223,6 +207,7 @@ config_load() {
         _error "Unable to connect to the cluster."
     fi
 
+    _command "kubectl get secret ${THIS_NAME}-config -n default"
     COUNT=$(kubectl get secret -n default | grep ${THIS_NAME}-config  | wc -l | xargs)
 
     if [ "x${COUNT}" != "x0" ]; then
@@ -233,11 +218,48 @@ config_load() {
         kubectl get secret ${THIS_NAME}-config -n default -o json | \
             jq -r '.data.text' | base64 --decode > ${CONFIG}
 
-        _command "load ${THIS_NAME}-config"
-        cat ${CONFIG}
+        _command "cat ${THIS_NAME}-config"
+        cat ${CONFIG} | grep '='
 
         . ${CONFIG}
     fi
+}
+
+config_edit() {
+    CONFIG=${SHELL_DIR}/build/${CLUSTER_NAME}/config.sh
+
+    _command "kubectl get secret ${THIS_NAME}-config -n default"
+    kubectl get secret ${THIS_NAME}-config -n default -o json | \
+        jq -r '.data.text' | base64 --decode > ${CONFIG}
+
+    LIST=${SHELL_DIR}/build/${CLUSTER_NAME}/config-list
+
+    cat ${CONFIG} | grep '=' | cut -d'=' -f1 > ${LIST}
+
+    # select
+    select_one
+
+    if [ "${SELECTED}" == "" ]; then
+        return
+    fi
+
+    DEFAULT="$(cat ${CONFIG} | grep '=' | grep ${SELECTED} | cut -d'=' -f2)"
+
+    question "${SELECTED} = [${DEFAULT}] : "
+    if [ "${ANSWER}" == "" ]; then
+        ANSWER=${DEFAULT}
+    fi
+
+    _replace "s/${SELECTED}=.*/${SELECTED}=${ANSWER}/" ${CONFIG}
+
+    # _command "load ${THIS_NAME}-config"
+    # cat ${CONFIG} | grep '='
+
+    . ${CONFIG}
+
+    CONFIG_SAVE=true
+
+    config_save
 }
 
 config_save() {
@@ -255,8 +277,8 @@ config_save() {
     echo "ISTIO=${ISTIO}" >> ${CONFIG}
     echo "ISTIO_DOMAIN=${ISTIO_DOMAIN}" >> ${CONFIG}
 
-    _command "save ${THIS_NAME}-config"
-    cat ${CONFIG}
+    _command "cat ${THIS_NAME}-config"
+    cat ${CONFIG} | grep '='
 
     ENCODED=${SHELL_DIR}/build/${CLUSTER_NAME}/config.txt
 
@@ -297,10 +319,11 @@ variables_load() {
     CONFIG=${SHELL_DIR}/build/${CLUSTER_NAME}/variables.groovy
 
     _command "kubectl get secret groovy-variables -n default"
-    kubectl get secret groovy-variables -n default -o json | jq -r .data.groovy | base64 --decode > ${CONFIG}
+    kubectl get secret groovy-variables -n default -o json | \
+        jq -r '.data.groovy' | base64 --decode > ${CONFIG}
 
-    echo
-    cat ${CONFIG} | grep "def "
+    _command "cat variables.groovy"
+    cat ${CONFIG} | grep 'def '
 }
 
 variables_edit() {
@@ -313,7 +336,8 @@ variables_edit() {
     CONFIG=${SHELL_DIR}/build/${CLUSTER_NAME}/variables.groovy
 
     _command "kubectl get secret groovy-variables -n default"
-    kubectl get secret groovy-variables -n default -o json | jq -r .data.groovy | base64 --decode > ${CONFIG}
+    kubectl get secret groovy-variables -n default -o json | \
+        jq -r '.data.groovy' | base64 --decode > ${CONFIG}
 
     LIST=${SHELL_DIR}/build/${CLUSTER_NAME}/variables-list
 
@@ -334,9 +358,6 @@ variables_edit() {
     fi
 
     _replace "s/def ${SELECTED} = .*/def ${SELECTED} = \"${ANSWER}\"/" ${CONFIG}
-
-    echo
-    cat ${CONFIG} | grep "def "
 
     variables_save
 }
@@ -376,13 +397,13 @@ variables_auto() {
 
     echo "return this" >> ${CONFIG}
 
-    echo
-    cat ${CONFIG} | grep "def "
-
     variables_save
 }
 
 variables_save() {
+    _command "cat variables.groovy"
+    cat ${CONFIG} | grep 'def '
+
     ENCODED=${SHELL_DIR}/build/${CLUSTER_NAME}/variables.txt
 
     if [ "${OS_NAME}" == "darwin" ]; then

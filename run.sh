@@ -154,11 +154,13 @@ config_menu() {
 
     echo
     _echo "1. config load"
-    _echo "2. config save"
+    _echo "2. config edit"
+    # _echo "3. config save"
+
     echo
-    _echo "3. variables load"
-    _echo "4. variables auto"
+    _echo "4. variables load"
     _echo "5. variables edit"
+    # _echo "6. variables auto"
 
     question
 
@@ -168,19 +170,23 @@ config_menu() {
             press_enter config
             ;;
         2)
-            config_save
+            config_edit
             press_enter config
             ;;
         3)
-            variables_load
+            config_save
             press_enter config
             ;;
         4)
-            variables_auto
+            variables_load
             press_enter config
             ;;
         5)
             variables_edit
+            press_enter config
+            ;;
+        6)
+            variables_auto
             press_enter config
             ;;
         *)
