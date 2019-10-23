@@ -396,15 +396,17 @@ helm_install() {
 
     # for cert-manager
     if [ "${NAME}" == "cert-manager" ]; then
+        CRD=$(cat ${CHART} | grep '# crd-version:' | awk '{print $3}')
+
+        # # Label the cert-manager namespace to disable resource validation
+        # _command "kubectl label namespace ${NAMESPACE} certmanager.k8s.io/disable-validation=true"
+        # kubectl label namespace ${NAMESPACE} certmanager.k8s.io/disable-validation=true --overwrite
+
         # Install the CustomResourceDefinition resources separately
         # https://github.com/helm/charts/blob/master/stable/cert-manager/README.md
+        URL="https://raw.githubusercontent.com/jetstack/cert-manager/release-${CRD}/deploy/manifests/00-crds.yaml"
         _command "kubectl apply -f 00-crds.yaml"
-        kubectl apply \
-            -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.10/deploy/manifests/00-crds.yaml
-
-        # Label the cert-manager namespace to disable resource validation
-        _command "kubectl label namespace ${NAMESPACE} certmanager.k8s.io/disable-validation=true"
-        kubectl label namespace ${NAMESPACE} certmanager.k8s.io/disable-validation=true --overwrite
+        kubectl apply --validate=false -f ${URL}
     fi
 
     # for external-dns

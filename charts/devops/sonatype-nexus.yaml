@@ -46,7 +46,7 @@ ingress:
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
     nginx.ingress.kubernetes.io/proxy-body-size: 500m
     ingress.kubernetes.io/proxy-body-size: 500m
-    certmanager.k8s.io/cluster-issuer: "letsencrypt-prod"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
     external-dns.alpha.kubernetes.io/hostname: "INGRESS_DOMAIN."
   tls:
     enabled: true
