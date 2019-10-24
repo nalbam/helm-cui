@@ -250,7 +250,7 @@ config_edit() {
         ANSWER=${DEFAULT}
     fi
 
-    _replace "s/${SELECTED}=.*/${SELECTED}=${ANSWER}/" ${CONFIG}
+    _replace "s|${SELECTED}=.*|${SELECTED}=${ANSWER}|" ${CONFIG}
 
     # _command "load ${THIS_NAME}-config"
     # cat ${CONFIG} | grep '='
@@ -357,7 +357,7 @@ variables_edit() {
         ANSWER=${DEFAULT}
     fi
 
-    _replace "s/def ${SELECTED} = .*/def ${SELECTED} = \"${ANSWER}\"/" ${CONFIG}
+    _replace "s|def ${SELECTED} = .*|def ${SELECTED} = \"${ANSWER}\"|" ${CONFIG}
 
     variables_save
 }
