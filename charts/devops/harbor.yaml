@@ -9,10 +9,6 @@
 
 expose:
   type: ingress
-  tls:
-    enabled: true
-    secretName: "core-harbor-tls"
-    notarySecretName: "notary-harbor-tls"
   ingress:
     hosts:
       core: core-INGRESS_DOMAIN
@@ -21,6 +17,10 @@ expose:
       cert-manager.io/cluster-issuer: "letsencrypt-prod"
       # external-dns.alpha.kubernetes.io/hostname: "core-INGRESS_DOMAIN."
       # external-dns.alpha.kubernetes.io/hostname: "notary-INGRESS_DOMAIN."
+  tls:
+    enabled: true
+    secretName: "core-harbor-tls"
+    notarySecretName: "notary-harbor-tls"
 
 externalURL: https://core-INGRESS_DOMAIN
 

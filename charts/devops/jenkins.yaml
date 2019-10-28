@@ -22,16 +22,16 @@ master:
   serviceType: SERVICE_TYPE
   ingress:
     enabled: INGRESS_ENABLED
-    hostName: INGRESS_DOMAIN
-    tls:
-      - secretName: jenkins-tls
-        hosts:
-          - INGRESS_DOMAIN
     annotations:
       kubernetes.io/ingress.class: nginx
       nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
       cert-manager.io/cluster-issuer: "letsencrypt-prod"
       external-dns.alpha.kubernetes.io/hostname: "INGRESS_DOMAIN."
+    hostName: INGRESS_DOMAIN
+    tls:
+      - secretName: jenkins-tls
+        hosts:
+          - INGRESS_DOMAIN
   overwritePlugins: true
   installPlugins:
     # https://github.com/helm/charts/blob/master/stable/jenkins/values.yaml
