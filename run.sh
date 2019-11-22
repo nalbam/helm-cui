@@ -320,67 +320,14 @@ helm_install() {
     CHART=${SHELL_DIR}/build/${CLUSTER_NAME}/helm-${NAME}.yaml
     get_template charts/${NAMESPACE}/${NAME}.yaml ${CHART}
 
-    # chart repository
+    # chart config
     REPO=$(cat ${CHART} | grep '# chart-repo:' | awk '{print $3}')
 
-    ARR=(${REPO//\// })
-
-    if [ "${ARR[0]}" == "" ]; then
-        PREFIX="stable"
-        REPO="stable/${NAME}"
-    elif [ "${ARR[1]}" == "" ]; then
-        PREFIX="stable"
-        REPO="stable/${ARR[0]}"
-    else
-        PREFIX="${ARR[0]}"
-        if [ "${PREFIX}" == "custom" ]; then
-            REPO="${SHELL_DIR}/${ARR[1]}"
-        else
-            REPO="${ARR[0]}/${ARR[1]}"
-        fi
-    fi
-
-    helm_repo "${PREFIX}"
-
-    # chart config
     VERSION=$(cat ${CHART} | grep '# chart-version:' | awk '{print $3}')
     INGRESS=$(cat ${CHART} | grep '# chart-ingress:' | awk '{print $3}')
 
-    _result "${REPO} version: ${VERSION}"
-
-    # installed chart version
-    LATEST=$(helm list | grep "${NAME}" | head -1 | awk '{print $9}')
-
-    if [ "${LATEST}" != "" ]; then
-        _result "installed version: ${LATEST}"
-    fi
-
     # latest chart version
-    URL="https://hub.helm.sh/charts/${REPO}"
-    LATEST=$(helm search hub ${NAME} -o json | URL="${URL}" jq -r '[.[] | select(.url==env.URL)][0] | "\(.version)"')
-
-    if [ "${LATEST}" != "" ]; then
-        _result "latest chart version: ${LATEST}"
-
-        if [ "${VERSION}" != "" ] && [ "${VERSION}" != "latest" ] && [ "${VERSION}" != "${LATEST}" ]; then
-            LIST=${SHELL_DIR}/build/${CLUSTER_NAME}/version-list
-            echo "${VERSION} " > ${LIST}
-            echo "${LATEST} (latest) " >> ${LIST}
-
-            # select
-            select_one
-
-            if [ "${SELECTED}" != "" ]; then
-                VERSION="$(echo "${SELECTED}" | cut -d' ' -f1)"
-            fi
-
-            _result "${VERSION}"
-        fi
-
-        if [ "${VERSION}" == "" ] || [ "${VERSION}" == "latest" ]; then
-            _replace "s/chart-version:.*/chart-version: ${LATEST}/g" ${CHART}
-        fi
-    fi
+    helm_chart_version "${REPO}" "${VERSION}"
 
     # global
     _replace "s/AWS_REGION/${REGION}/g" ${CHART}
@@ -668,10 +615,10 @@ helm_install() {
     # helm install
     if [ "${VERSION}" == "" ] || [ "${VERSION}" == "latest" ]; then
         _command "helm install ${NAME} ${REPO} --namespace ${NAMESPACE} --values ${CHART}"
-        helm install ${NAME} ${REPO} --namespace ${NAMESPACE} --values ${CHART} ${EXTRA_VALUES} --devel
+        helm upgrade --install ${NAME} ${REPO} --namespace ${NAMESPACE} --values ${CHART} ${EXTRA_VALUES} --devel
     else
         _command "helm install ${NAME} ${REPO} --namespace ${NAMESPACE} --values ${CHART} --version ${VERSION}"
-        helm install ${NAME} ${REPO} --namespace ${NAMESPACE} --values ${CHART} --version ${VERSION} ${EXTRA_VALUES}
+        helm upgrade --install ${NAME} ${REPO} --namespace ${NAMESPACE} --values ${CHART} --version ${VERSION} ${EXTRA_VALUES}
     fi
 
     # create pdb
@@ -741,8 +688,8 @@ helm_history() {
     # waiting
     waiting_pod "${NAMESPACE}" "${NAME}" 2
 
-    _command "helm history ${NAME}"
-    helm history ${NAME}
+    # _command "helm history ${NAME}"
+    # helm history ${NAME}
 
     _command "kubectl get deploy,pod,svc,ing,pvc,pv -n ${NAMESPACE}"
     kubectl get deploy,pod,svc,ing,pvc,pv -n ${NAMESPACE} | grep ${NAME}
@@ -835,33 +782,47 @@ helm_init() {
 }
 
 helm_repo() {
-    _NAME=$1
-    _REPO=$2
+    ARR=(${REPO//\// })
 
-    if [ "${_REPO}" == "" ]; then
-        if [ "${_NAME}" == "stable" ]; then
-            _REPO="https://kubernetes-charts.storage.googleapis.com/"
-        elif [ "${_NAME}" == "incubator" ]; then
-            _REPO="https://kubernetes-charts-incubator.storage.googleapis.com/"
-        elif [ "${_NAME}" == "argo" ]; then
-            _REPO="https://argoproj.github.io/argo-helm"
-        elif [ "${_NAME}" == "jetstack" ]; then
-            _REPO="https://charts.jetstack.io"
-        elif [ "${_NAME}" == "harbor" ]; then
-            _REPO="https://helm.goharbor.io"
-        elif [ "${_NAME}" == "monocular" ]; then
-            _REPO="https://helm.github.io/monocular"
-        elif [ "${_NAME}" == "gitlab" ]; then
-            _REPO="https://charts.gitlab.io"
+    if [ "${ARR[0]}" == "" ]; then
+        PREFIX="stable"
+        REPO="stable/${NAME}"
+    elif [ "${ARR[1]}" == "" ]; then
+        PREFIX="stable"
+        REPO="stable/${ARR[0]}"
+    else
+        PREFIX="${ARR[0]}"
+        if [ "${PREFIX}" == "custom" ]; then
+            REPO="${SHELL_DIR}/${ARR[1]}"
+        else
+            REPO="${ARR[0]}/${ARR[1]}"
         fi
     fi
 
-    if [ "${_REPO}" != "" ]; then
-        COUNT=$(helm repo list | grep -v NAME | awk '{print $1}' | grep "${_NAME}" | wc -l | xargs)
+    if [ "${PREFIX}" == "stable" ]; then
+        URL="https://kubernetes-charts.storage.googleapis.com/"
+    elif [ "${PREFIX}" == "incubator" ]; then
+        URL="https://kubernetes-charts-incubator.storage.googleapis.com/"
+    elif [ "${PREFIX}" == "argo" ]; then
+        URL="https://argoproj.github.io/argo-helm"
+    elif [ "${PREFIX}" == "jetstack" ]; then
+        URL="https://charts.jetstack.io"
+    elif [ "${PREFIX}" == "harbor" ]; then
+        URL="https://helm.goharbor.io"
+    elif [ "${PREFIX}" == "monocular" ]; then
+        URL="https://helm.github.io/monocular"
+    elif [ "${PREFIX}" == "gitlab" ]; then
+        URL="https://charts.gitlab.io"
+    else
+        URL=
+    fi
+
+    if [ "${URL}" != "" ]; then
+        COUNT=$(helm repo list | grep -v NAME | awk '{print $1}' | grep "${PREFIX}" | wc -l | xargs)
 
         if [ "x${COUNT}" == "x0" ]; then
-            _command "helm repo add ${_NAME} ${_REPO}"
-            helm repo add ${_NAME} ${_REPO}
+            _command "helm repo add ${PREFIX} ${URL}"
+            helm repo add ${PREFIX} ${URL}
 
             helm_repo_update
         fi
@@ -874,6 +835,48 @@ helm_repo_update() {
 
     _command "helm repo update"
     helm repo update
+}
+
+helm_chart_version() {
+    # chart repository
+    helm_repo "${REPO}"
+
+    # chart version
+    _result "${REPO} version: ${VERSION}"
+
+    # installed chart version
+    LATEST=$(helm list | grep "${NAME}" | head -1 | awk '{print $9}')
+
+    if [ "${LATEST}" != "" ]; then
+        _result "installed version: ${LATEST}"
+    fi
+
+    URL="https://hub.helm.sh/charts/${REPO}"
+
+    LATEST=$(helm search hub ${NAME} -o json | URL="${URL}" jq -r '[.[] | select(.url==env.URL)][0] | "\(.version)"')
+
+    if [ "${LATEST}" != "" ]; then
+        _result "latest chart version: ${LATEST}"
+
+        if [ "${VERSION}" != "" ] && [ "${VERSION}" != "latest" ] && [ "${VERSION}" != "${LATEST}" ]; then
+            LIST=${SHELL_DIR}/build/${CLUSTER_NAME}/version-list
+            echo "${VERSION} " > ${LIST}
+            echo "${LATEST} (latest) " >> ${LIST}
+
+            # select
+            select_one
+
+            if [ "${SELECTED}" != "" ]; then
+                VERSION="$(echo "${SELECTED}" | cut -d' ' -f1)"
+            fi
+
+            _result "${VERSION}"
+        fi
+
+        if [ "${VERSION}" == "" ] || [ "${VERSION}" == "latest" ]; then
+            _replace "s/chart-version:.*/chart-version: ${LATEST}/g" ${CHART}
+        fi
+    fi
 }
 
 create_namespace() {
