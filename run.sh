@@ -369,6 +369,7 @@ helm_install() {
     # for external-dns
     if [ "${NAME}" == "external-dns" ]; then
         COUNT=$(kubectl get pods -n kube-system | grep kube2iam | wc -l | xargs)
+
         if [ "x${COUNT}" != "x0" ]; then
             ACCOUNT=$(aws sts get-caller-identity | grep "Account" | cut -d'"' -f4)
 
@@ -385,6 +386,7 @@ helm_install() {
     # for cluster-autoscaler
     if [ "${NAME}" == "cluster-autoscaler" ]; then
         COUNT=$(kubectl get pods -n kube-system | grep kube2iam | wc -l | xargs)
+
         if [ "x${COUNT}" != "x0" ]; then
             ACCOUNT=$(aws sts get-caller-identity | grep "Account" | cut -d'"' -f4)
 
@@ -491,6 +493,7 @@ helm_install() {
 
         # kube-state-metrics
         COUNT=$(kubectl get pods -n kube-system | grep kube-state-metrics | wc -l | xargs)
+
         if [ "x${COUNT}" == "x0" ]; then
             _replace "s/KUBE_STATE_METRICS/true/g" ${CHART}
         else
@@ -531,6 +534,7 @@ helm_install() {
 
         # kube-state-metrics
         COUNT=$(kubectl get pods -n kube-system | grep kube-state-metrics | wc -l | xargs)
+
         if [ "x${COUNT}" == "x0" ]; then
             _replace "s/KUBE_STATE_METRICS/true/g" ${CHART}
         else
@@ -576,8 +580,10 @@ helm_install() {
 
     # for master node
     NODE=$(cat ${CHART} | grep '# chart-node:' | awk '{print $3}')
+
     if [ "${NODE}" == "master" ]; then
         COUNT=$(kubectl get no | grep Ready | grep master | wc -l | xargs)
+
         if [ "x${COUNT}" != "x0" ]; then
             _replace "s/#:MASTER://g" ${CHART}
         fi
@@ -586,6 +592,7 @@ helm_install() {
     # for istio
     if [ "${ISTIO}" == "true" ]; then
         COUNT=$(kubectl get ns ${NAMESPACE} --show-labels | grep 'istio-injection=enabled' | wc -l | xargs)
+
         if [ "x${COUNT}" != "x0" ]; then
             ISTIO_ENABLED=true
         else
@@ -594,17 +601,22 @@ helm_install() {
     else
         ISTIO_ENABLED=false
     fi
+
     _replace "s/ISTIO_ENABLED/${ISTIO_ENABLED}/g" ${CHART}
 
     # check exist persistent volume
     COUNT=$(cat ${CHART} | grep '# chart-pvc:' | wc -l | xargs)
+
     if [ "x${COUNT}" != "x0" ]; then
         LIST=${SHELL_DIR}/build/${CLUSTER_NAME}/pvc-${NAME}-yaml
+
         cat ${CHART} | grep '# chart-pvc:' | awk '{print $3,$4,$5}' > ${LIST}
+
         while IFS='' read -r line || [[ -n "$line" ]]; do
             ARR=(${line})
             check_exist_pv ${NAMESPACE} ${ARR[0]} ${ARR[1]} ${ARR[2]}
             RELEASED=$?
+
             if [ "${RELEASED}" -gt "0" ]; then
                 echo "  To use an existing volume, remove the PV's '.claimRef.uid' attribute to make the PV an 'Available' status and try again."
                 return
