@@ -300,7 +300,7 @@ charts_menu() {
 }
 
 helm_install() {
-    helm_check
+    # helm_check
 
     NAME=${1}
     NAMESPACE=${2}
@@ -322,16 +322,25 @@ helm_install() {
 
     # chart repository
     REPO=$(cat ${CHART} | grep '# chart-repo:' | awk '{print $3}')
-    if [ "${REPO}" == "" ]; then
+
+    ARR=(${REPO//\// })
+
+    if [ "${ARR[0]}" == "" ]; then
+        PREFIX="stable"
         REPO="stable/${NAME}"
+    elif [ "${ARR[1]}" == "" ]; then
+        PREFIX="stable"
+        REPO="stable/${ARR[0]}"
     else
-        PREFIX="$(echo ${REPO} | cut -d'/' -f1)"
+        PREFIX="${ARR[0]}"
         if [ "${PREFIX}" == "custom" ]; then
-            REPO="${SHELL_DIR}/${REPO}"
-        elif [ "${PREFIX}" != "stable" ]; then
-            helm_repo "${PREFIX}"
+            REPO="${SHELL_DIR}/${ARR[1]}"
+        else
+            REPO="${ARR[0]}/${ARR[1]}"
         fi
     fi
+
+    helm_repo "${PREFIX}"
 
     # chart config
     VERSION=$(cat ${CHART} | grep '# chart-version:' | awk '{print $3}')
@@ -340,14 +349,15 @@ helm_install() {
     _result "${REPO} version: ${VERSION}"
 
     # installed chart version
-    LATEST=$(helm ls ${NAME} | grep ${NAME} | head -1 | awk '{print $9}')
+    LATEST=$(helm list | grep "${NAME}" | head -1 | awk '{print $9}')
 
     if [ "${LATEST}" != "" ]; then
         _result "installed version: ${LATEST}"
     fi
 
     # latest chart version
-    LATEST=$(helm search ${REPO} | grep ${NAME} | head -1 | awk '{print $2}')
+    URL="https://hub.helm.sh/charts/${REPO}"
+    LATEST=$(helm search hub ${NAME} -o json | URL="${URL}" jq -r '[.[] | select(.url==env.URL)][0] | "\(.version)"')
 
     if [ "${LATEST}" != "" ]; then
         _result "latest chart version: ${LATEST}"
@@ -657,11 +667,11 @@ helm_install() {
 
     # helm install
     if [ "${VERSION}" == "" ] || [ "${VERSION}" == "latest" ]; then
-        _command "helm upgrade --install ${NAME} ${REPO} --namespace ${NAMESPACE} --values ${CHART}"
-        helm upgrade --install ${NAME} ${REPO} --namespace ${NAMESPACE} --values ${CHART} ${EXTRA_VALUES}
+        _command "helm install ${NAME} ${REPO} --namespace ${NAMESPACE} --values ${CHART}"
+        helm install ${NAME} ${REPO} --namespace ${NAMESPACE} --values ${CHART} ${EXTRA_VALUES} --devel
     else
-        _command "helm upgrade --install ${NAME} ${REPO} --namespace ${NAMESPACE} --values ${CHART} --version ${VERSION}"
-        helm upgrade --install ${NAME} ${REPO} --namespace ${NAMESPACE} --values ${CHART} --version ${VERSION} ${EXTRA_VALUES}
+        _command "helm install ${NAME} ${REPO} --namespace ${NAMESPACE} --values ${CHART} --version ${VERSION}"
+        helm install ${NAME} ${REPO} --namespace ${NAMESPACE} --values ${CHART} --version ${VERSION} ${EXTRA_VALUES}
     fi
 
     # create pdb
@@ -793,31 +803,33 @@ helm_delete() {
 }
 
 helm_check() {
-    _command "kubectl get pod -n kube-system | grep tiller-deploy"
-    COUNT=$(kubectl get pod -n kube-system | grep tiller-deploy | wc -l | xargs)
+    # _command "kubectl get pod -n kube-system | grep tiller-deploy"
+    # COUNT=$(kubectl get pod -n kube-system | grep tiller-deploy | wc -l | xargs)
 
-    if [ "x${COUNT}" == "x0" ] || [ ! -d ~/.helm ]; then
-        helm_init
-    fi
+    # if [ "x${COUNT}" == "x0" ] || [ ! -d ~/.helm ]; then
+    #     helm_init
+    # fi
+
+    helm_repo_update
 }
 
 helm_init() {
-    NAMESPACE="kube-system"
-    ACCOUNT="tiller"
+    # NAMESPACE="kube-system"
+    # ACCOUNT="tiller"
 
-    create_cluster_role_binding cluster-admin ${NAMESPACE} ${ACCOUNT}
+    # create_cluster_role_binding cluster-admin ${NAMESPACE} ${ACCOUNT}
 
-    _command "helm init --upgrade --service-account=${ACCOUNT}"
-    helm init --upgrade --service-account=${ACCOUNT}
+    # _command "helm init --upgrade --service-account=${ACCOUNT}"
+    # helm init --upgrade --service-account=${ACCOUNT}
 
-    # default pdb
-    default_pdb "${NAMESPACE}"
+    # # default pdb
+    # default_pdb "${NAMESPACE}"
 
-    # waiting
-    waiting_pod "${NAMESPACE}" "tiller"
+    # # waiting
+    # waiting_pod "${NAMESPACE}" "tiller"
 
-    _command "kubectl get pod,svc -n ${NAMESPACE}"
-    kubectl get pod,svc -n ${NAMESPACE}
+    # _command "kubectl get pod,svc -n ${NAMESPACE}"
+    # kubectl get pod,svc -n ${NAMESPACE}
 
     helm_repo_update
 }
@@ -827,8 +839,10 @@ helm_repo() {
     _REPO=$2
 
     if [ "${_REPO}" == "" ]; then
-        if [ "${_NAME}" == "incubator" ]; then
-            _REPO="https://storage.googleapis.com/kubernetes-charts-incubator"
+        if [ "${_NAME}" == "stable" ]; then
+            _REPO="https://kubernetes-charts.storage.googleapis.com/"
+        elif [ "${_NAME}" == "incubator" ]; then
+            _REPO="https://kubernetes-charts-incubator.storage.googleapis.com/"
         elif [ "${_NAME}" == "argo" ]; then
             _REPO="https://argoproj.github.io/argo-helm"
         elif [ "${_NAME}" == "jetstack" ]; then
@@ -1227,7 +1241,7 @@ efs_create() {
 }
 
 istio_init() {
-    helm_check
+    # helm_check
 
     NAME="istio"
     NAMESPACE="istio-system"
