@@ -351,6 +351,13 @@ helm_install() {
         _replace "s/#:ING://g" ${CHART}
     fi
 
+    # for nginx-ingress
+    if [[ "${NAME}" == "nginx-ingress"* ]]; then
+        get_base_domain
+
+        _replace "s/BASE_DOMAIN/${BASE_DOMAIN}/g" ${CHART}
+    fi
+
     # for cert-manager
     if [ "${NAME}" == "cert-manager" ]; then
         CRD=$(cat ${CHART} | grep '# crd-version:' | awk '{print $3}')
@@ -645,8 +652,6 @@ helm_install() {
 
     # for nginx-ingress
     if [[ "${NAME}" == "nginx-ingress"* ]]; then
-        get_base_domain
-
         set_base_domain "${NAME}"
     fi
 
