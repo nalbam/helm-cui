@@ -6,7 +6,9 @@ L_PAD=" "
 
 THIS_REPO="nalbam"
 THIS_NAME="helm-cui"
-THIS_VERSION="v0.1.0"
+THIS_VERSION="v0.0.0"
+
+HELM_VERSION=
 
 DEBUG_MODE=true
 
