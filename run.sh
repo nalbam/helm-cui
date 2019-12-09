@@ -366,6 +366,20 @@ helm_install() {
         kubectl apply --validate=false -f ${URL}
     fi
 
+    # for nginx-ingress
+    if [[ "${NAME}" == "nginx-ingress"* ]]; then
+        SERVICE_CLUSTER_IP=$(kubectl get svc -n kube-ingress | grep '\-controller ' | awk '{print $3}')
+
+        if [ "${SERVICE_CLUSTER_IP}" != "" ]; then
+            METRICS_CLUSTER_IP=$(kubectl get svc -n kube-ingress | grep '\-controller\-metrics ' | awk '{print $3}')
+            BACKEND_CLUSTER_IP=$(kubectl get svc -n kube-ingress | grep '\-default\-backend ' | awk '{print $3}')
+
+            _replace "s/SERVICE_CLUSTER_IP/${SERVICE_CLUSTER_IP}/g" ${CHART}
+            _replace "s/METRICS_CLUSTER_IP/${METRICS_CLUSTER_IP}/g" ${CHART}
+            _replace "s/BACKEND_CLUSTER_IP/${BACKEND_CLUSTER_IP}/g" ${CHART}
+        fi
+    fi
+
     # for external-dns
     if [ "${NAME}" == "external-dns" ]; then
         COUNT=$(kubectl get pods -n kube-system | grep kube2iam | wc -l | xargs)

@@ -16,6 +16,7 @@ controller:
       service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout: "3600"
       # external-dns.alpha.kubernetes.io/hostname: "demo.domain.com."
       # external-dns.alpha.kubernetes.io/ttl: 300
+    clusterIP: "SERVICE_CLUSTER_IP"
   stats:
     enabled: true
   metrics:
@@ -24,5 +25,8 @@ controller:
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "10254"
-    # serviceMonitor:
-    #   enabled: true
+      clusterIP: "METRICS_CLUSTER_IP"
+
+defaultBackend:
+  service:
+    clusterIP: "BACKEND_CLUSTER_IP"
