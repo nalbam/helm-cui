@@ -1,5 +1,5 @@
 # chart-repo: jetstack/cert-manager
-# chart-version: v0.11.0
-# crd-version: 0.11
+# chart-version: v0.12.0
+# crd-version: 0.12
 
 nameOverride: cert-manager
