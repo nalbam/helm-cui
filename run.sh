@@ -446,8 +446,8 @@ helm_install() {
         replace_chart ${CHART} "AWS_BUCKET" "${CLUSTER_NAME}-argo"
     fi
 
-    # for argocd
-    if [ "${NAME}" == "argocd" ]; then
+    # for argo-cd
+    if [ "${NAME}" == "argo-cd" ]; then
         # admin password
         replace_password ${CHART}
 
