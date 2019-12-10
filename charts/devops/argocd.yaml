@@ -50,3 +50,9 @@ server:
   #:GITHUB:    g, GITHUB_ORG:team1, role:org-sre
   #:GITHUB:  policy.default: role:readonly
   #:GITHUB:  scopes: "[cognito:groups, email]"
+
+configs:
+  secret:
+    createSecret: true
+    # argocdServerAdminPassword: "PASSWORD"
+    argocdServerAdminPassword: "ARGO_PWD"

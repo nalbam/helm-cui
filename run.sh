@@ -447,24 +447,14 @@ helm_install() {
     fi
 
     # for argocd
-    # if [ "${NAME}" == "argocd" ]; then
-    #     if [ "${INGRESS_DOMAIN}" != "" ]; then
-    #         replace_chart ${CHART} "GITHUB_ORG"
+    if [ "${NAME}" == "argocd" ]; then
+        # admin password
+        replace_password ${CHART}
 
-    #         if [ "${ANSWER}" != "" ]; then
-    #             _replace "s/#:GITHUB://g" ${CHART}
+        ARGO_PWD=$(htpasswd -nbBC 10 "" ${ANSWER} | tr -d ':\n' | sed 's/$2y/$2a/')
 
-    #             _result "New Application: https://github.com/organizations/${ANSWER}/settings/applications"
-
-    #             _result "Homepage: https://${NAME}-${NAMESPACE}.${BASE_DOMAIN}"
-    #             _result "Callback: https://${NAME}-${NAMESPACE}.${BASE_DOMAIN}/api/dex/callback"
-
-    #             replace_password ${CHART} "GITHUB_CLIENT_ID" "****"
-
-    #             replace_password ${CHART} "GITHUB_CLIENT_SECRET" "****"
-    #         fi
-    #     fi
-    # fi
+        _replace "s|ARGO_PWD|${ARGO_PWD}|g" ${CHART}
+    fi
 
     # for jenkins
     if [ "${NAME}" == "jenkins" ]; then
