@@ -447,24 +447,24 @@ helm_install() {
     fi
 
     # for argocd
-    if [ "${NAME}" == "argocd" ]; then
-        if [ "${INGRESS_DOMAIN}" != "" ]; then
-            replace_chart ${CHART} "GITHUB_ORG"
+    # if [ "${NAME}" == "argocd" ]; then
+    #     if [ "${INGRESS_DOMAIN}" != "" ]; then
+    #         replace_chart ${CHART} "GITHUB_ORG"
 
-            if [ "${ANSWER}" != "" ]; then
-                _replace "s/#:GITHUB://g" ${CHART}
+    #         if [ "${ANSWER}" != "" ]; then
+    #             _replace "s/#:GITHUB://g" ${CHART}
 
-                _result "New Application: https://github.com/organizations/${ANSWER}/settings/applications"
+    #             _result "New Application: https://github.com/organizations/${ANSWER}/settings/applications"
 
-                _result "Homepage: https://${NAME}-${NAMESPACE}.${BASE_DOMAIN}"
-                _result "Callback: https://${NAME}-${NAMESPACE}.${BASE_DOMAIN}/api/dex/callback"
+    #             _result "Homepage: https://${NAME}-${NAMESPACE}.${BASE_DOMAIN}"
+    #             _result "Callback: https://${NAME}-${NAMESPACE}.${BASE_DOMAIN}/api/dex/callback"
 
-                replace_password ${CHART} "GITHUB_CLIENT_ID" "****"
+    #             replace_password ${CHART} "GITHUB_CLIENT_ID" "****"
 
-                replace_password ${CHART} "GITHUB_CLIENT_SECRET" "****"
-            fi
-        fi
-    fi
+    #             replace_password ${CHART} "GITHUB_CLIENT_SECRET" "****"
+    #         fi
+    #     fi
+    # fi
 
     # for jenkins
     if [ "${NAME}" == "jenkins" ]; then
