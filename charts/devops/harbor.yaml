@@ -28,7 +28,7 @@ harborAdminPassword: "PASSWORD"
 
 #:ROLE:core:
 #:ROLE:  podAnnotations:
-#:ROLE:    iam.amazonaws.com/role: AWS_ROLE_ARN
+#:ROLE:    iam.amazonaws.com/role: "AWS_ROLE_ARN"
 
 database:
   type: internal

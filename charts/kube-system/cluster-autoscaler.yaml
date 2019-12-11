@@ -13,20 +13,22 @@ extraArgs:
   v: 4
   stderrthreshold: info
   logtostderr: true
-  expander: random
+  expander: most-pods
   scale-down-enabled: true
   scale-down-utilization-threshold: 0.75
   skip-nodes-with-local-storage: false
   skip-nodes-with-system-pods: false
+  balance-similar-node-groups: "true"
 
 #:ROLE:podAnnotations:
-#:ROLE:  iam.amazonaws.com/role: AWS_ROLE_ARN
+#:ROLE:  iam.amazonaws.com/role: "AWS_ROLE_ARN"
 
 #:MASTER:nodeSelector:
 #:MASTER:  kubernetes.io/role: master
 
 #:MASTER:tolerations:
 #:MASTER:  - effect: NoSchedule
+#:MASTER:    operator: "Exists"
 #:MASTER:    key: node-role.kubernetes.io/master
 
 sslCertPath: /etc/ssl/certs/ca-bundle.crt

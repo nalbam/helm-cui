@@ -8,7 +8,7 @@ sources:
   - ingress
 
 #:ROLE:podAnnotations:
-#:ROLE:  iam.amazonaws.com/role: AWS_ROLE_ARN
+#:ROLE:  iam.amazonaws.com/role: "AWS_ROLE_ARN"
 
 rbac:
   create: true
