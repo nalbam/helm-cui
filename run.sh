@@ -451,7 +451,7 @@ helm_install() {
         # admin password
         replace_password ${CHART}
 
-        ARGO_PWD=$(htpasswd -nbBC 10 "" ${ANSWER} | tr -d ':\n' | sed 's/$2y/$2a/')
+        ARGO_PWD=$(htpasswd -nbBC 10 '' ${ANSWER} | tr -d ':\n' | sed 's/$2y/$2a/')
 
         _replace "s|ARGO_PWD|${ARGO_PWD}|g" ${CHART}
     fi
