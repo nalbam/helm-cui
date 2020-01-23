@@ -36,7 +36,7 @@ prepare() {
         question "Do you want to install the required tools? (awscli,kubectl,helm...) [Y/n] : "
 
         if [ "${ANSWER:-Y}" == "Y" ]; then
-            curl -sL toast.sh/tools | bash
+            curl -sL curl -sL opspresso.com/tools | bash | bash
         else
             _error "Need install tools."
         fi

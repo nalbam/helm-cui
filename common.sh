@@ -173,7 +173,7 @@ get_template() {
 }
 
 update_tools() {
-    curl -sL toast.sh/tools | bash
+    curl -sL curl -sL opspresso.com/tools | bash | bash
 
     _success "Please restart!"
 }
